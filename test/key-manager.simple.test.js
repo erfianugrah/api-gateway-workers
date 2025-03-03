@@ -1,15 +1,15 @@
 import { describe, expect, it } from '@jest/globals';
-import { KeyManager } from '../src/index.js';
+import { ApiKeyManager } from '../src/models/ApiKeyManager.js';
 
-describe('KeyManager', () => {
+describe('ApiKeyManager', () => {
   // This is a simplified test that only checks if the class exists and has the expected methods
   it('should have required methods', () => {
-    // Just check that the KeyManager class exists
-    expect(KeyManager).toBeDefined();
-    expect(typeof KeyManager).toBe('function');
+    // Just check that the ApiKeyManager class exists
+    expect(ApiKeyManager).toBeDefined();
+    expect(typeof ApiKeyManager).toBe('function');
     
     // No need to instantiate, just check the prototype has the methods
-    const prototype = KeyManager.prototype;
+    const prototype = ApiKeyManager.prototype;
     expect(prototype.createKey).toBeDefined();
     expect(typeof prototype.createKey).toBe('function');
     
@@ -25,7 +25,7 @@ describe('KeyManager', () => {
     expect(prototype.validateKey).toBeDefined();
     expect(typeof prototype.validateKey).toBe('function');
     
-    expect(prototype.fetch).toBeDefined();
-    expect(typeof prototype.fetch).toBe('function');
+    expect(prototype.cleanupExpiredKeys).toBeDefined();
+    expect(typeof prototype.cleanupExpiredKeys).toBe('function');
   });
 });

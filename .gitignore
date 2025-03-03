@@ -167,6 +167,37 @@ dist
 .pnp.\*
 
 # wrangler project
-
 .dev.vars
 .wrangler/
+
+# Local development
+.env.local
+.dev.vars
+.local-*
+
+# Build and output directories
+dist/
+build/
+worker/
+.build/
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Editor and IDE files
+*.sublime-project
+*.sublime-workspace
+*.idea/
+*.swp
+*.swo
+.history/
+
+# Test reports and coverage
+test-results/
+junit.xml
+coverage/
+.nyc_output/
