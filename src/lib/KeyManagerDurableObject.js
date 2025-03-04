@@ -5,7 +5,9 @@ import {
   handleListKeys, 
   handleCreateKey, 
   handleGetKey, 
-  handleRevokeKey 
+  handleRevokeKey,
+  handleRotateKey,
+  handleListKeysWithCursor
 } from '../handlers/keys.js';
 import { handleValidateKey } from '../handlers/validation.js';
 import { handleHealthCheck, handleCleanup } from '../handlers/system.js';
@@ -25,8 +27,8 @@ export class KeyManagerDurableObject extends DurableObject {
     this.state = state;
     this.env = env;
     
-    // Initialize API Key Manager
-    this.keyManager = new ApiKeyManager(state.storage);
+    // Initialize API Key Manager with environment variables
+    this.keyManager = new ApiKeyManager(state.storage, env);
     
     // Initialize router
     this.router = new Router();
@@ -59,9 +61,19 @@ export class KeyManagerDurableObject extends DurableObject {
       handleRevokeKey(this.keyManager, ctx.params.id)
     );
     
+    // Key rotation route
+    this.router.add('POST', '/keys/:id/rotate', (req, ctx) => 
+      handleRotateKey(this.keyManager, ctx.params.id, req)
+    );
+    
     // Validation route
     this.router.add('POST', '/validate', (req, ctx) => 
       handleValidateKey(this.keyManager, req)
+    );
+    
+    // Cursor-based pagination route
+    this.router.add('GET', '/keys-cursor', (req, ctx) => 
+      handleListKeysWithCursor(this.keyManager, new URL(req.url))
     );
     
     // System routes

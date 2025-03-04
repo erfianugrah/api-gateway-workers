@@ -6,7 +6,9 @@ import {
   isValidUuid,
   isValidApiKey,
   validateCreateKeyParams,
-  validatePaginationParams
+  validatePaginationParams,
+  validateCursorParams,
+  validateKeyRotationParams
 } from '../../src/utils/validation.js';
 
 describe('Validation utilities', () => {
@@ -86,15 +88,22 @@ describe('Validation utilities', () => {
 
   describe('isValidApiKey', () => {
     it('should return true for valid API keys', () => {
-      expect(isValidApiKey('km_1234567890abcdef')).toBe(true);
-      expect(isValidApiKey('km_a87ff679a2f3e71d9181a67b7542122c')).toBe(true);
+      // Generate valid key format for testing
+      const validKey1 = 'km_' + '0'.repeat(64);
+      const validKey2 = 'km_' + 'a'.repeat(64);
+      
+      expect(isValidApiKey(validKey1)).toBe(true);
+      expect(isValidApiKey(validKey2)).toBe(true);
     });
 
     it('should return false for invalid API keys', () => {
       expect(isValidApiKey('not_a_key')).toBe(false);
       expect(isValidApiKey('km_')).toBe(false); // Too short
-      expect(isValidApiKey('PREFIX_1234567890')).toBe(false); // Wrong prefix
+      expect(isValidApiKey('PREFIX_' + '0'.repeat(64))).toBe(false); // Wrong prefix
       expect(isValidApiKey('1234567890')).toBe(false); // No prefix
+      expect(isValidApiKey('km_123456')).toBe(false); // Too short after prefix
+      expect(isValidApiKey('km_' + '0'.repeat(63))).toBe(false); // Too short
+      expect(isValidApiKey('km_' + '0'.repeat(65))).toBe(false); // Too long
       expect(isValidApiKey(null)).toBe(false);
       expect(isValidApiKey(undefined)).toBe(false);
       expect(isValidApiKey(123)).toBe(false);
@@ -103,8 +112,9 @@ describe('Validation utilities', () => {
     });
 
     it('should allow custom prefixes', () => {
-      expect(isValidApiKey('custom_1234567890abcdef', 'custom_')).toBe(true);
-      expect(isValidApiKey('km_1234567890abcdef', 'custom_')).toBe(false);
+      const validKey = '0'.repeat(64);
+      expect(isValidApiKey('custom_' + validKey, 'custom_')).toBe(true);
+      expect(isValidApiKey('km_' + validKey, 'custom_')).toBe(false);
     });
   });
 
@@ -207,6 +217,82 @@ describe('Validation utilities', () => {
     it('should reject invalid offsets', () => {
       expect(validatePaginationParams(10, -1).isValid).toBe(false);
       expect(validatePaginationParams(10, 'not-a-number').isValid).toBe(false);
+    });
+  });
+  
+  describe('validateCursorParams', () => {
+    it('should validate valid parameters', () => {
+      expect(validateCursorParams(10).isValid).toBe(true);
+      expect(validateCursorParams(100, null).isValid).toBe(true);
+      expect(validateCursorParams(100, '').isValid).toBe(true);
+      expect(validateCursorParams(100, btoa('{"id":"123","ts":1234}')).isValid).toBe(true);
+    });
+
+    it('should reject invalid limits', () => {
+      expect(validateCursorParams(0).isValid).toBe(false);
+      expect(validateCursorParams(-1).isValid).toBe(false);
+      expect(validateCursorParams(1001).isValid).toBe(false);
+      expect(validateCursorParams('not-a-number').isValid).toBe(false);
+    });
+
+    it('should reject invalid cursors', () => {
+      expect(validateCursorParams(10, '%invalid-base64%').isValid).toBe(false);
+      expect(validateCursorParams(10, 'not_base64!').isValid).toBe(false);
+    });
+  });
+  
+  describe('validateKeyRotationParams', () => {
+    it('should validate valid parameters', () => {
+      // Empty params (use defaults)
+      expect(validateKeyRotationParams({}).isValid).toBe(true);
+      
+      // Full params
+      const params = {
+        gracePeriodDays: 30,
+        scopes: ['read:data', 'write:data'],
+        name: 'New Key Name',
+        expiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000 // 30 days
+      };
+      expect(validateKeyRotationParams(params).isValid).toBe(true);
+    });
+
+    it('should reject invalid grace period', () => {
+      expect(validateKeyRotationParams({ gracePeriodDays: -1 }).isValid).toBe(false);
+      expect(validateKeyRotationParams({ gracePeriodDays: 91 }).isValid).toBe(false);
+      expect(validateKeyRotationParams({ gracePeriodDays: 'not-a-number' }).isValid).toBe(false);
+    });
+
+    it('should reject invalid scopes', () => {
+      expect(validateKeyRotationParams({ scopes: 'not-an-array' }).isValid).toBe(false);
+      expect(validateKeyRotationParams({ scopes: [] }).isValid).toBe(true); // Empty array is fine for rotation
+      expect(validateKeyRotationParams({ scopes: [123] }).isValid).toBe(false);
+    });
+    
+    it('should reject invalid name', () => {
+      expect(validateKeyRotationParams({ name: '' }).isValid).toBe(false);
+      expect(validateKeyRotationParams({ name: 123 }).isValid).toBe(false);
+    });
+    
+    it('should validate expiresAt if provided', () => {
+      // Valid expiration
+      const validParams = {
+        expiresAt: Date.now() + 10 * 60 * 1000 // 10 minutes in the future
+      };
+      expect(validateKeyRotationParams(validParams).isValid).toBe(true);
+
+      // Expiration too soon
+      const invalidParams = {
+        expiresAt: Date.now() + 1000 // 1 second in the future (too soon)
+      };
+      expect(validateKeyRotationParams(invalidParams).isValid).toBe(false);
+      
+      // Invalid type
+      expect(validateKeyRotationParams({ expiresAt: 'not-a-number' }).isValid).toBe(false);
+    });
+
+    it('should handle null or undefined params', () => {
+      expect(validateKeyRotationParams(null).isValid).toBe(false);
+      expect(validateKeyRotationParams(undefined).isValid).toBe(false);
     });
   });
 });
