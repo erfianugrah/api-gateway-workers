@@ -8,10 +8,10 @@ The API Key Manager is built on Cloudflare Workers with Durable Objects, providi
 
 ```mermaid
 flowchart TB
-    A[API Request\nHTTP/HTTPS] -->|Request| B[Cloudflare Worker\nEntry Point]
-    B --> C[Key Manager\nDurable Object]
-    C --> D[Persistent Storage\nDurable Objects]
-    B <--> E[KV Storage]
+    A["API Request<br>HTTP/HTTPS"] -->|Request| B["Cloudflare Worker<br>Entry Point"]
+    B --> C["Key Manager<br>Durable Object"]
+    C --> D["Persistent Storage<br>Durable Objects"]
+    B <--> E["KV Storage"]
     
     style A fill:#335566,stroke:#88aacc,stroke-width:2px,color:#ffffff
     style B fill:#334466,stroke:#88aacc,stroke-width:2px,color:#ffffff
@@ -245,8 +245,8 @@ The system supports two types of key rotation:
 
 ```mermaid
 flowchart LR
-    A[Old Key\nRotated] -->|Points To| C[Grace Period]
-    C -->|After Expiry| B[New Key\nActive]
+    A["Old Key<br>Rotated"] -->|Points To| C["Grace Period"]
+    C -->|After Expiry| B["New Key<br>Active"]
     
     style A fill:#663333,stroke:#cc8888,stroke-width:2px,color:#ffffff
     style B fill:#335533,stroke:#88cc88,stroke-width:2px,color:#ffffff
