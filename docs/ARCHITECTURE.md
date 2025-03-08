@@ -6,27 +6,18 @@ This document provides a detailed overview of the API Key Manager's architecture
 
 The API Key Manager is built on Cloudflare Workers with Durable Objects, providing a globally distributed, highly available API key management service without a separate database.
 
-```
-┌───────────────────┐     ┌──────────────────────┐    ┌──────────────────────┐
-│                   │     │                      │    │                      │
-│   API Request     │────▶│   Cloudflare Worker  │───▶│  Key Manager         │
-│   (HTTP/HTTPS)    │     │   (Entry Point)      │    │  Durable Object      │
-│                   │     │                      │    │                      │
-└───────────────────┘     └──────────────────────┘    └──────────────┬───────┘
-                           ▲                                          │
-                           │                                          ▼
-                           │                            ┌──────────────────────┐
-                           │                            │                      │
-                           │                            │  Persistent Storage  │
-                           │                            │  (Durable Objects)   │
-                           │                            │                      │
-                           │                            └──────────────────────┘
-                           │
-                    ┌──────┴───────┐   
-                    │              │   
-                    │  KV Storage  │   
-                    │              │   
-                    └──────────────┘   
+```mermaid
+flowchart TB
+    A[API Request\nHTTP/HTTPS] -->|Request| B[Cloudflare Worker\nEntry Point]
+    B --> C[Key Manager\nDurable Object]
+    C --> D[Persistent Storage\nDurable Objects]
+    B <--> E[KV Storage]
+    
+    style A fill:#f9f9f9,stroke:#333,stroke-width:2px
+    style B fill:#f0f0ff,stroke:#333,stroke-width:2px
+    style C fill:#f0f0ff,stroke:#333,stroke-width:2px
+    style D fill:#e6e6ff,stroke:#333,stroke-width:2px
+    style E fill:#e6e6ff,stroke:#333,stroke-width:2px
 ```
 
 The updated architecture includes:
@@ -37,21 +28,20 @@ The updated architecture includes:
 
 ### Authentication Flow
 
-```
-┌────────┐     ┌────────┐     ┌───────────────┐     ┌─────────────┐
-│        │     │        │     │               │     │             │
-│ Client │────▶│ Worker │────▶│ Auth          │────▶│ Permission  │
-│        │     │        │     │ Middleware    │     │ Check       │
-│        │     │        │     │               │     │             │
-└────────┘     └────────┘     └───────┬───────┘     └──────┬──────┘
-                                      │                     │
-                                      ▼                     ▼
-                                ┌─────────────┐     ┌─────────────┐
-                                │             │     │             │
-                                │ Audit       │     │ Durable     │
-                                │ Logger      │     │ Object      │
-                                │             │     │             │
-                                └─────────────┘     └─────────────┘
+```mermaid
+flowchart LR
+    A[Client] -->|Request| B[Worker]
+    B --> C[Auth Middleware]
+    C --> D[Permission Check]
+    C --> E[Audit Logger]
+    D --> F[Durable Object]
+    
+    style A fill:#f9f9f9,stroke:#333,stroke-width:2px
+    style B fill:#f0f0ff,stroke:#333,stroke-width:2px
+    style C fill:#f0f0ff,stroke:#333,stroke-width:2px
+    style D fill:#e6e6ff,stroke:#333,stroke-width:2px
+    style E fill:#e6e6ff,stroke:#333,stroke-width:2px
+    style F fill:#e6e6ff,stroke:#333,stroke-width:2px
 ```
 
 1. Client sends a request with an admin API key in the X-Api-Key header
@@ -133,26 +123,18 @@ The authentication system implements role-based access control:
 
 ### Roles and Permission Model
 
-```
-┌─────────────┐
-│             │
-│ SUPER_ADMIN │
-│             │
-└──────┬──────┘
-       │
-       ▼
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│             │     │             │     │             │
-│  KEY_ADMIN  │     │ USER_ADMIN  │     │   SUPPORT   │
-│             │     │             │     │             │
-└──────┬──────┘     └─────────────┘     └─────────────┘
-       │
-       ▼
-┌─────────────┐
-│             │
-│ KEY_VIEWER  │
-│             │
-└─────────────┘
+```mermaid
+flowchart TB
+    A[SUPER_ADMIN] --> B[KEY_ADMIN]
+    A --> C[USER_ADMIN]
+    A --> D[SUPPORT]
+    B --> E[KEY_VIEWER]
+    
+    style A fill:#f0f0ff,stroke:#333,stroke-width:2px
+    style B fill:#e6e6ff,stroke:#333,stroke-width:2px
+    style C fill:#e6e6ff,stroke:#333,stroke-width:2px
+    style D fill:#e6e6ff,stroke:#333,stroke-width:2px
+    style E fill:#e6efff,stroke:#333,stroke-width:2px
 ```
 
 Each role has a defined set of permissions:
@@ -261,17 +243,14 @@ The system supports two types of key rotation:
 
 ### 1. API Key Rotation
 
-```
-┌───────────┐                          ┌───────────┐
-│           │                          │           │
-│  Old Key  │───────┐            ┌────▶│  New Key  │
-│ (Rotated) │       │            │     │ (Active)  │
-│           │       │            │     │           │
-└───────────┘       ▼            │     └───────────┘
-                ┌────────────┐   │
-                │ Grace      │───┘
-                │ Period     │
-                └────────────┘
+```mermaid
+flowchart LR
+    A[Old Key\nRotated] -->|Points To| C[Grace Period]
+    C -->|After Expiry| B[New Key\nActive]
+    
+    style A fill:#ffecec,stroke:#333,stroke-width:2px
+    style B fill:#ecffec,stroke:#333,stroke-width:2px
+    style C fill:#ffffec,stroke:#333,stroke-width:2px
 ```
 
 The API key rotation process:
@@ -312,32 +291,24 @@ This process:
 
 ### Creating an API Key
 
-```
-┌────────┐     ┌────────┐     ┌─────────────────┐     ┌─────────────┐     ┌──────────────┐
-│        │     │        │     │                 │     │             │     │              │
-│ Client │────▶│ Worker │────▶│ Auth Middleware │────▶│ API Key Mgr │────▶│ Encryption   │
-│        │     │        │     │                 │     │             │     │              │
-└────────┘     └────────┘     └─────────────────┘     └──────┬──────┘     └──────────────┘
-                                                            │
-                                                            ▼
-                                                      ┌──────────────┐
-                                                      │              │
-                                                      │ HMAC Sign    │
-                                                      │              │
-                                                      └──────┬───────┘
-                                                             │
-                                                             ▼
-                                                      ┌──────────────┐
-                                                      │              │
-                                                      │ Storage      │
-                                                      │              │
-                                                      └──────────────┘
-                                                      
-                                                      ┌──────────────┐
-                                                      │              │
-                                                      │ Audit Log    │
-                                                      │              │
-                                                      └──────────────┘
+```mermaid
+flowchart TB
+    A[Client] -->|POST /keys| B[Worker]
+    B -->|Authenticate| C[Auth Middleware]
+    C -->|Forward| D[API Key Mgr]
+    D -->|Generate| E[Encryption]
+    D -->|Sign| F[HMAC]
+    D -->|Store| G[Storage]
+    D -->|Log| H[Audit Log]
+    
+    style A fill:#f9f9f9,stroke:#333,stroke-width:2px
+    style B fill:#f0f0ff,stroke:#333,stroke-width:2px
+    style C fill:#f0f0ff,stroke:#333,stroke-width:2px
+    style D fill:#e6e6ff,stroke:#333,stroke-width:2px
+    style E fill:#e6e6ff,stroke:#333,stroke-width:2px
+    style F fill:#e6e6ff,stroke:#333,stroke-width:2px
+    style G fill:#e6e6ff,stroke:#333,stroke-width:2px
+    style H fill:#e6e6ff,stroke:#333,stroke-width:2px
 ```
 
 1. Client sends a POST request to `/keys` with an admin API key
@@ -353,24 +324,22 @@ This process:
 
 ### Validating an API Key
 
-```
-┌────────┐     ┌────────┐     ┌─────────────────┐     ┌────────────┐     ┌──────────────┐
-│        │     │        │     │                 │     │            │     │              │
-│ Client │────▶│ Worker │────▶│ Durable Object │────▶│ Lookup Key │────▶│ Verify HMAC  │
-│        │     │        │     │                 │     │            │     │              │
-└────────┘     └────────┘     └─────────────────┘     └─────┬──────┘     └──────┬───────┘
-                                                            │                    │
-                                                            ▼                    ▼
-                                                     ┌─────────────┐      ┌─────────────┐
-                                                     │ Status &    │      │ Storage     │
-                                                     │ Expiration  │      │ (Key Data)  │
-                                                     └──────┬──────┘      └─────────────┘
-                                                            │
-                                                            ▼
-                                                     ┌─────────────┐
-                                                     │ Scope Check │
-                                                     │             │
-                                                     └─────────────┘
+```mermaid
+flowchart TB
+    A[Client] -->|POST /validate| B[Worker]
+    B --> C[Durable Object]
+    C -->|Find Key ID| D[Lookup Key]
+    D -->|Security Check| E[Verify HMAC]
+    D --> F[Status & Expiration]
+    F --> G[Scope Check]
+    
+    style A fill:#f9f9f9,stroke:#333,stroke-width:2px
+    style B fill:#f0f0ff,stroke:#333,stroke-width:2px
+    style C fill:#f0f0ff,stroke:#333,stroke-width:2px
+    style D fill:#e6e6ff,stroke:#333,stroke-width:2px
+    style E fill:#e6e6ff,stroke:#333,stroke-width:2px
+    style F fill:#e6e6ff,stroke:#333,stroke-width:2px
+    style G fill:#e6e6ff,stroke:#333,stroke-width:2px
 ```
 
 1. Client sends a POST request to `/validate` with an API key
@@ -386,19 +355,20 @@ This process:
 
 ### First-Time Setup Flow
 
-```
-┌────────┐     ┌────────┐     ┌─────────────────┐     ┌─────────────┐     ┌──────────────┐
-│        │     │        │     │                 │     │             │     │              │
-│ Client │────▶│ Worker │────▶│ Setup Check    │────▶│ Create      │────▶│ Mark Setup   │
-│        │     │        │     │                 │     │ Super Admin │     │ Completed    │
-└────────┘     └────────┘     └─────────────────┘     └──────┬──────┘     └──────────────┘
-                                                            │
-                                                            ▼
-                                                      ┌──────────────┐
-                                                      │              │
-                                                      │ Audit Log    │
-                                                      │              │
-                                                      └──────────────┘
+```mermaid
+flowchart TB
+    A[Client] -->|POST /setup| B[Worker]
+    B -->|Verify First Time| C[Setup Check]
+    C -->|If Not Setup Yet| D[Create Super Admin]
+    D --> E[Mark Setup Completed]
+    D --> F[Audit Log]
+    
+    style A fill:#f9f9f9,stroke:#333,stroke-width:2px
+    style B fill:#f0f0ff,stroke:#333,stroke-width:2px
+    style C fill:#f0f0ff,stroke:#333,stroke-width:2px
+    style D fill:#e6e6ff,stroke:#333,stroke-width:2px
+    style E fill:#e6e6ff,stroke:#333,stroke-width:2px
+    style F fill:#e6e6ff,stroke:#333,stroke-width:2px
 ```
 
 1. Client sends a POST request to `/setup` with admin data
