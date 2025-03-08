@@ -30,11 +30,16 @@ describe("Audit Logger", () => {
           limit || 50,
         );
 
+        // Important fix: return null for cursor only when there are no more results
+        const hasMore = keys.length > (filteredKeys.length + (cursor
+          ? keys.findIndex((k) =>
+            k.name > cursorValue
+          )
+          : 0));
+
         return {
           keys: filteredKeys,
-          cursor: filteredKeys.length === (limit || 50)
-            ? filteredKeys[filteredKeys.length - 1].name
-            : null,
+          cursor: hasMore ? filteredKeys[filteredKeys.length - 1].name : null,
         };
       }),
     };
