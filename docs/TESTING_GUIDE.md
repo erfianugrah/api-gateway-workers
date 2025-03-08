@@ -1,6 +1,6 @@
 # Testing Guide for API Key Manager
 
-This guide provides instructions for testing the API Key Manager with the new authentication module.
+This guide provides instructions for testing the API Key Manager with the Clean Architecture and Command pattern implementation.
 
 ## Setting Up the Test Environment
 
@@ -26,7 +26,8 @@ kv_namespaces = [
 Create a `.env.test` file in your project root:
 
 ```
-JWT_SECRET=test-jwt-secret-for-testing-only
+ENCRYPTION_KEY=test-encryption-key-for-testing-only
+HMAC_SECRET=test-hmac-secret-for-testing-only
 ```
 
 ### 3. Install Testing Dependencies
@@ -49,164 +50,168 @@ For test coverage:
 npm run test:coverage
 ```
 
+For watching files during development:
+
+```bash
+npm run test:watch
+```
+
+For running a specific test file:
+
+```bash
+NODE_OPTIONS=--experimental-vm-modules jest path/to/test.js
+```
+
+For running a specific test:
+
+```bash
+NODE_OPTIONS=--experimental-vm-modules jest path/to/test.js -t "test name"
+```
+
 ## Test Structure
 
-The tests are organized following the clean architecture patterns of the application:
+The tests are organized to mirror the Clean Architecture layers of the application:
 
-### 1. Core Tests
+### 1. Domain Layer Tests
 
-- `core/keys/commands/*.test.js` - Test command objects
-- `core/keys/handlers/*.test.js` - Test command handlers
-- `core/auth/*.test.js` - Test auth services
-- `core/security/*.test.js` - Test security services
+Tests for core business entities and services:
 
-### 2. API Tests
+- `test/core/keys/KeyService.test.js` - Tests for the key service
+- `test/core/auth/AuthService.test.js` - Tests for authentication service
+- `test/core/security/*.test.js` - Tests for security services
 
-- `api/controllers/*.test.js` - Test API controllers
-- `api/middleware/*.test.js` - Test middleware functions
+### 2. Command Tests
 
-### 3. Infrastructure Tests
+Tests for command objects that represent user intentions:
 
-- `infrastructure/storage/*.test.js` - Test storage implementations
-- `infrastructure/http/*.test.js` - Test routing
-- `infrastructure/config/*.test.js` - Test configuration
+- `test/core/keys/commands/CreateKeyCommand.test.js` - Tests for key creation command
+- `test/core/keys/commands/GetKeyCommand.test.js` - Tests for key retrieval command
+- `test/core/keys/commands/ListKeysCommand.test.js` - Tests for key listing command
+- `test/core/keys/commands/RevokeKeyCommand.test.js` - Tests for key revocation command
+- `test/core/keys/commands/RotateKeyCommand.test.js` - Tests for key rotation command
+- `test/core/keys/commands/ValidateKeyCommand.test.js` - Tests for key validation command
 
-### 4. Legacy Auth Tests
+### 3. Handler Tests
 
-- `auth/keyGenerator.test.js` - Test API key generation
-- `auth/keyValidator.test.js` - Test API key validation
-- `auth/roles.test.js` - Test role-based permissions
-- `auth/adminManager.test.js` - Test admin user management
-- `auth/auditLogger.test.js` - Test audit logging
+Tests for command handlers that implement business logic:
 
-### 5. Integration Tests
+- `test/core/keys/handlers/CreateKeyHandler.test.js` - Tests for key creation handler
+- `test/core/keys/handlers/GetKeyHandler.test.js` - Tests for key retrieval handler
+- `test/core/keys/handlers/ListKeysHandler.test.js` - Tests for key listing handler
+- `test/core/keys/handlers/RevokeKeyHandler.test.js` - Tests for key revocation handler
+- `test/core/keys/handlers/RotateKeyHandler.test.js` - Tests for key rotation handler
+- `test/core/keys/handlers/ValidateKeyHandler.test.js` - Tests for key validation handler
 
-- `lib/KeyManagerDurableObject.test.js` - Test the Durable Object implementation
+### 4. API Tests
 
-### 6. End-to-End Tests
+Tests for controllers and middleware:
+
+- `test/api/controllers/KeysController.test.js` - Tests API endpoints for key management
+- `test/api/controllers/ValidationController.test.js` - Tests API endpoints for key validation
+- `test/api/controllers/SystemController.test.js` - Tests system endpoints
+- `test/api/middleware/*.test.js` - Tests middleware functions
+
+### 5. Infrastructure Tests
+
+Tests for infrastructure components:
+
+- `test/infrastructure/storage/DurableObjectRepository.test.js` - Tests for storage
+- `test/infrastructure/http/Router.test.js` - Tests for HTTP routing
+- `test/infrastructure/di/Container.test.js` - Tests for dependency injection
+
+### 6. Integration Tests
+
+- `test/lib/KeyManagerDurableObject.test.js` - Tests the Durable Object implementation
+- `test/lib/router.test.js` - Tests the router implementation
+
+### 7. End-to-End Tests
 
 The integration test script in `test/integration-test.sh` contains end-to-end tests that simulate real-world usage.
 
-## Manual Testing
+## Testing Command and Handler Classes
 
-### Initial Setup
+The Command pattern organizes business logic into command objects and their handlers. Here's how to test them:
 
-Test the first-time setup:
+### Testing Command Objects
 
-```bash
-curl -X POST https://your-worker.workers.dev/setup \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "Test Admin",
-    "email": "test@example.com"
-  }'
+Command objects are data structures that encapsulate user intentions:
+
+```javascript
+import { GetKeyCommand } from '../../../src/core/keys/commands/GetKeyCommand.js';
+
+describe('GetKeyCommand', () => {
+  it('should create command with required fields', () => {
+    const command = new GetKeyCommand('key-123');
+    
+    expect(command.keyId).toBe('key-123');
+    expect(command.constructor.name).toBe('GetKeyCommand');
+  });
+  
+  it('should throw if required fields are missing', () => {
+    expect(() => new GetKeyCommand()).toThrow();
+  });
+});
 ```
 
-Save the returned API key for further testing.
+### Testing Command Handlers
 
-### Admin Operations
+Command handlers contain the business logic:
 
-Test creating an API key:
+```javascript
+import { GetKeyHandler } from '../../../src/core/keys/handlers/GetKeyHandler.js';
+import { GetKeyCommand } from '../../../src/core/keys/commands/GetKeyCommand.js';
+import { TestContainer } from '../../utils/TestContainer.js';
 
-```bash
-curl -X POST https://your-worker.workers.dev/keys \
-  -H "Content-Type: application/json" \
-  -H "X-Api-Key: km_your_admin_key" \
-  -d '{
-    "name": "Test Key",
-    "owner": "Test Service",
-    "scopes": ["read:data", "write:data"]
-  }'
+describe('GetKeyHandler', () => {
+  let container;
+  let handler;
+  let mockKeyService;
+  
+  beforeEach(() => {
+    container = new TestContainer();
+    mockKeyService = container.resolve('keyService');
+    handler = new GetKeyHandler({ keyService: mockKeyService });
+  });
+  
+  it('should retrieve a key', async () => {
+    // Mock the key service to return a test key
+    mockKeyService.getKey.mockResolvedValue({ id: 'key-123', name: 'Test Key' });
+    
+    // Create a command
+    const command = new GetKeyCommand('key-123');
+    
+    // Execute the handler
+    const result = await handler.handle(command);
+    
+    // Verify results
+    expect(result.id).toBe('key-123');
+    expect(result.name).toBe('Test Key');
+    expect(mockKeyService.getKey).toHaveBeenCalledWith('key-123');
+  });
+  
+  it('should throw if key not found', async () => {
+    // Mock the key service to return null
+    mockKeyService.getKey.mockResolvedValue(null);
+    
+    // Create a command
+    const command = new GetKeyCommand('not-found');
+    
+    // Execute the handler and expect an error
+    await expect(handler.handle(command)).rejects.toThrow();
+  });
+});
 ```
-
-Test listing API keys:
-
-```bash
-curl https://your-worker.workers.dev/keys \
-  -H "X-Api-Key: km_your_admin_key"
-```
-
-Test retrieving a specific API key:
-
-```bash
-curl https://your-worker.workers.dev/keys/{key_id} \
-  -H "X-Api-Key: km_your_admin_key"
-```
-
-Test revoking an API key:
-
-```bash
-curl -X DELETE https://your-worker.workers.dev/keys/{key_id} \
-  -H "X-Api-Key: km_your_admin_key"
-```
-
-### Key Validation
-
-Test validating an API key:
-
-```bash
-curl -X POST https://your-worker.workers.dev/validate \
-  -H "Content-Type: application/json" \
-  -d '{
-    "key": "km_api_key_to_validate",
-    "scopes": ["read:data"]
-  }'
-```
-
-### Permission Testing
-
-Test permission enforcement by creating a key with limited permissions:
-
-```bash
-# First, create a KEY_VIEWER admin
-curl -X POST https://your-worker.workers.dev/admins \
-  -H "Content-Type: application/json" \
-  -H "X-Api-Key: km_your_super_admin_key" \
-  -d '{
-    "name": "Viewer Admin",
-    "email": "viewer@example.com",
-    "role": "KEY_VIEWER"
-  }'
-```
-
-Then try operations that should be forbidden:
-
-```bash
-# This should fail with a 403 response
-curl -X POST https://your-worker.workers.dev/keys \
-  -H "Content-Type: application/json" \
-  -H "X-Api-Key: km_your_viewer_admin_key" \
-  -d '{
-    "name": "Test Key",
-    "owner": "Test Service",
-    "scopes": ["read:data"]
-  }'
-```
-
-## Common Testing Issues
-
-### Authentication Issues
-
-- **"Cannot read properties of undefined (reading 'valid')"**: This indicates an issue with the admin information extraction. Check that you're setting the admin headers correctly in test requests.
-
-### KV Storage Issues
-
-- **"KV binding not found in your environment"**: Ensure your test environment has the correct KV binding configured.
-
-### Permission Issues
-
-- **"Permission denied"**: Check that your test admin has the correct role and permissions.
 
 ## Test Utilities
 
 The project includes a comprehensive test utilities package in `test/utils/` to simplify writing tests:
 
-### Test Container
+### TestContainer
 
 The `TestContainer` class provides a dependency injection container with pre-configured mocks:
 
 ```javascript
-import { TestContainer } from '../utils/index.js';
+import { TestContainer } from '../utils/TestContainer.js';
 
 describe('MyComponent', () => {
   let container;
@@ -216,54 +221,116 @@ describe('MyComponent', () => {
   });
   
   it('should perform some action', () => {
-    const service = container.resolve('keyService');
-    // Test with the mocked service
+    // Get a mock service
+    const keyService = container.resolve('keyService');
+    
+    // Configure the mock
+    keyService.createKey.mockResolvedValue({ id: 'key-123' });
+    
+    // Use the mock in your test
+    const component = new MyComponent(keyService);
+    const result = await component.doSomething();
+    
+    // Verify the mock was called
+    expect(keyService.createKey).toHaveBeenCalled();
   });
 });
 ```
 
-### Mock Factory Functions
+### Mock Factories
 
 The utilities package includes mock factory functions for different components:
 
 ```javascript
 import { 
   createMockStorage,
-  createMockKeyService,
   createMockRequest, 
-  createMockContext
-} from '../utils/index.js';
+  createMockEnvironment,
+  createTestKey
+} from '../utils/factories.js';
 
 // Create a mock storage implementation
 const storage = createMockStorage();
 
-// Create a mock request for controller testing
+// Create a mock request
 const request = createMockRequest({
   method: 'POST',
   url: 'http://example.com/keys',
   body: { name: 'Test Key' }
 });
+
+// Create a test environment
+const env = createMockEnvironment();
+
+// Create a test API key
+const key = createTestKey({ 
+  name: 'Test Key',
+  scopes: ['read:data']
+});
 ```
 
-### Test Environment Setup
+### Testing Controllers with TestContainer
 
-For complete test setup with time and crypto mocking:
+Testing controllers with the TestContainer simplifies dependency management:
 
 ```javascript
-import { setupTestEnvironment } from '../utils/index.js';
+import { TestContainer } from '../../utils/TestContainer.js';
+import { KeysController } from '../../../src/api/controllers/KeysController.js';
+import { createMockRequest, createMockEnvironment } from '../../utils/factories.js';
 
-describe('My Test Suite', () => {
-  let { container, teardown } = setupTestEnvironment({
-    mockTimeValue: 1000000
+describe('KeysController', () => {
+  let container;
+  let controller;
+  let commandBus;
+  
+  beforeEach(() => {
+    // Create the test container
+    container = new TestContainer();
+    
+    // Get the mock CommandBus
+    commandBus = container.resolve('commandBus');
+    
+    // Create the controller with dependencies from the container
+    controller = new KeysController({
+      commandBus,
+      authService: container.resolve('authService'),
+      auditLogger: container.resolve('auditLogger')
+    });
   });
   
-  afterEach(() => {
-    teardown();
-  });
-  
-  it('should do something', () => {
-    // Test with the container and mock time
-    expect(Date.now()).toBe(1000000);
+  it('should create a key', async () => {
+    // Configure the CommandBus to return a test key
+    commandBus.execute.mockResolvedValue({ 
+      id: 'key-123', 
+      name: 'Test Key' 
+    });
+    
+    // Create a mock request
+    const request = createMockRequest({
+      method: 'POST',
+      body: { name: 'Test Key', owner: 'test@example.com' }
+    });
+    
+    // Create a mock environment
+    const env = createMockEnvironment();
+    
+    // Execute the controller method
+    const response = await controller.createKey(request, env);
+    
+    // Verify the response
+    expect(response.status).toBe(201);
+    const body = await response.json();
+    expect(body.id).toBe('key-123');
+    
+    // Verify the CommandBus was called with the right command
+    expect(commandBus.execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        constructor: {
+          name: 'CreateKeyCommand'
+        },
+        name: 'Test Key'
+      })
+    );
   });
 });
 ```
@@ -278,64 +345,57 @@ When writing new tests:
 4. Verify that permissions are correctly enforced
 5. Check that audit logs are created as expected
 
-Example Controller test:
+## Testing Permissions and Audit Logging
+
+### Testing Permissions
 
 ```javascript
-import { TestContainer, createMockRequest, createMockContext } from '../utils/index.js';
-import { KeysController } from '../../src/api/controllers/KeysController.js';
-
-describe('KeysController', () => {
-  let container;
-  let controller;
+it('should enforce required permissions', async () => {
+  // Configure the auth service to deny permission
+  const authService = container.resolve('authService');
+  authService.hasPermission.mockReturnValue(false);
   
-  beforeEach(() => {
-    container = new TestContainer();
-    controller = new KeysController({
-      keyService: container.resolve('keyService'),
-      authService: container.resolve('authService'),
-      commandBus: container.resolve('commandBus'),
-      auditLogger: container.resolve('auditLogger'),
-    });
-  });
+  // Create a mock request
+  const request = createMockRequest();
+  const env = createMockEnvironment();
   
-  it('should create a key', async () => {
-    const request = createMockRequest({
-      method: 'POST',
-      body: { name: 'Test Key', owner: 'test@example.com' }
-    });
+  // Execute the controller method and expect an error
+  await expect(controller.createKey(request, env))
+    .rejects.toThrow('Permission denied');
     
-    const context = createMockContext();
-    
-    const response = await controller.createKey(request, context);
-    
-    expect(response.status).toBe(201);
-    const body = await response.json();
-    expect(body.id).toBeDefined();
-  });
+  // Verify permission was checked
+  expect(authService.hasPermission).toHaveBeenCalledWith(
+    expect.anything(),
+    'create:keys'
+  );
 });
 ```
 
-## Testing the Audit Log
-
-To verify that actions are being logged correctly:
+### Testing Audit Logging
 
 ```javascript
 it('should log admin actions', async () => {
-  // Mock the KV store
-  const mockKV = {
-    put: jest.fn(),
-    get: jest.fn(),
-    list: jest.fn().mockResolvedValue({ keys: [] })
-  };
+  // Configure the CommandBus to succeed
+  commandBus.execute.mockResolvedValue({ id: 'key-123' });
   
-  const mockEnv = { KV: mockKV };
+  // Create a mock request and admin
+  const request = createMockRequest();
+  const env = createMockEnvironment();
   
-  // Perform an action
-  await logAdminAction('admin-id', 'test_action', { test: true }, mockEnv);
+  // Configure the auth service to return an admin
+  const authService = container.resolve('authService');
+  authService.getRequestAdmin.mockReturnValue({ id: 'admin-123' });
   
-  // Verify log was created
-  expect(mockKV.put).toHaveBeenCalled();
-  expect(mockKV.put.mock.calls[0][0]).toMatch(/^log:admin:/);
+  // Execute the controller method
+  await controller.createKey(request, env);
+  
+  // Verify audit logging
+  const auditLogger = container.resolve('auditLogger');
+  expect(auditLogger.logAdminAction).toHaveBeenCalledWith(
+    'admin-123',
+    'key:create',
+    expect.any(Object)
+  );
 });
 ```
 
@@ -348,3 +408,31 @@ wrk -t12 -c400 -d30s https://your-worker.workers.dev/validate
 ```
 
 Monitor the response times and error rates to ensure your implementation can handle the expected load.
+
+## Debugging Tests
+
+If tests are failing, try these debugging techniques:
+
+1. Use console.log in your tests (output appears in the Jest console)
+2. Run a single test with `npm test -- -t "test name"` for focused debugging
+3. Inspect mock calls with `mockFn.mock.calls` to see what arguments were passed
+4. Use Jest's `mockImplementation` to add custom behavior to mocks
+5. Check that TestContainer is correctly configured for your test
+
+Example debugging test:
+
+```javascript
+it('should debug a failing test', async () => {
+  // Inspect the mock
+  console.log('Mock setup:', mockKeyService);
+  
+  // Execute the code
+  const result = await handler.handle(command);
+  
+  // Inspect the result
+  console.log('Result:', result);
+  
+  // Inspect what was called on the mock
+  console.log('Mock calls:', mockKeyService.getKey.mock.calls);
+});
+```

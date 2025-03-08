@@ -7,6 +7,7 @@ This package provides a collection of utilities for writing tests for the Key Ma
 - [Getting Started](#getting-started)
 - [Mock Objects](#mock-objects)
 - [Test Container](#test-container)
+- [Testing Commands and Handlers](#testing-commands-and-handlers)
 - [Test Environment](#test-environment)
 - [Examples](#examples)
 
@@ -140,6 +141,116 @@ container.mockKeyLookup("km_test-key", "test-key-id");
 container.mockPermission(false); // Deny all permissions
 ```
 
+## Testing Commands and Handlers
+
+The test utilities make it simple to test command objects and their handlers:
+
+### Testing Commands
+
+Commands are data objects that represent user intentions:
+
+```javascript
+import { GetKeyCommand } from '../../../src/core/keys/commands/GetKeyCommand.js';
+
+describe('GetKeyCommand', () => {
+  it('should create command with required fields', () => {
+    const command = new GetKeyCommand('key-123');
+    
+    expect(command.keyId).toBe('key-123');
+    expect(command.constructor.name).toBe('GetKeyCommand');
+  });
+  
+  it('should throw if required fields are missing', () => {
+    expect(() => new GetKeyCommand()).toThrow();
+  });
+});
+```
+
+### Testing Handlers
+
+Handlers implement business logic for commands:
+
+```javascript
+import { GetKeyHandler } from '../../../src/core/keys/handlers/GetKeyHandler.js';
+import { GetKeyCommand } from '../../../src/core/keys/commands/GetKeyCommand.js';
+import { TestContainer } from '../../utils/TestContainer.js';
+
+describe('GetKeyHandler', () => {
+  let container;
+  let handler;
+  let mockKeyService;
+  
+  beforeEach(() => {
+    // Create a container with pre-configured mocks
+    container = new TestContainer();
+    
+    // Get the mock key service
+    mockKeyService = container.resolve('keyService');
+    
+    // Create the handler with dependencies from the container
+    handler = new GetKeyHandler({ keyService: mockKeyService });
+  });
+  
+  it('should retrieve a key', async () => {
+    // Configure the mock service
+    mockKeyService.getKey.mockResolvedValue({ 
+      id: 'key-123', 
+      name: 'Test Key' 
+    });
+    
+    // Create a command
+    const command = new GetKeyCommand('key-123');
+    
+    // Execute the handler
+    const result = await handler.handle(command);
+    
+    // Verify the results
+    expect(result.id).toBe('key-123');
+    expect(result.name).toBe('Test Key');
+    
+    // Verify the mock was called correctly
+    expect(mockKeyService.getKey).toHaveBeenCalledWith('key-123');
+  });
+  
+  it('should throw if key not found', async () => {
+    // Configure the mock to return null (key not found)
+    mockKeyService.getKey.mockResolvedValue(null);
+    
+    // Create a command
+    const command = new GetKeyCommand('not-found');
+    
+    // Execute the handler and expect an error
+    await expect(handler.handle(command)).rejects.toThrow();
+  });
+});
+```
+
+### Testing with CommandBus
+
+To test with the CommandBus, use the mock from TestContainer:
+
+```javascript
+it('should execute a command via CommandBus', async () => {
+  // Get mock CommandBus from container
+  const commandBus = container.resolve('commandBus');
+  
+  // Configure the mock response
+  commandBus.execute.mockResolvedValue({ id: 'key-123', name: 'Test Key' });
+  
+  // Create a command
+  const command = new GetKeyCommand('key-123');
+  
+  // Execute via command bus
+  const result = await commandBus.execute(command);
+  
+  // Verify the result
+  expect(result.id).toBe('key-123');
+  
+  // Verify the command bus was called with the right command
+  expect(commandBus.execute).toHaveBeenCalledWith(command);
+});
+```
+
 ## Test Environment
 
 For complete test setup with time mocking and cleanup:
@@ -202,6 +313,54 @@ describe("KeysController", () => {
     
     const body = await response.json();
     expect(body.id).toBeDefined();
+  });
+});
+```
+
+### Testing a Command Handler Chain
+
+Test how multiple commands and handlers work together:
+
+```javascript
+describe('Key Management Flow', () => {
+  let container;
+  let commandBus;
+  
+  beforeEach(() => {
+    container = new TestContainer();
+    commandBus = container.resolve('commandBus');
+    
+    // Set up real handlers (not mocks) to test actual implementation
+    const keyService = container.resolve('keyService');
+    
+    const createKeyHandler = new CreateKeyHandler({ keyService });
+    const getKeyHandler = new GetKeyHandler({ keyService });
+    const revokeKeyHandler = new RevokeKeyHandler({ keyService });
+    
+    // Register handlers with command bus
+    commandBus.register(CreateKeyCommand, createKeyHandler);
+    commandBus.register(GetKeyCommand, getKeyHandler);
+    commandBus.register(RevokeKeyCommand, revokeKeyHandler);
+  });
+  
+  it('should create, retrieve and revoke a key', async () => {
+    // Create a key
+    const createCommand = new CreateKeyCommand('Test Key', 'owner@example.com', ['read']);
+    const key = await commandBus.execute(createCommand);
+    
+    // Get the key
+    const getCommand = new GetKeyCommand(key.id);
+    const retrievedKey = await commandBus.execute(getCommand);
+    expect(retrievedKey.id).toBe(key.id);
+    
+    // Revoke the key
+    const revokeCommand = new RevokeKeyCommand(key.id);
+    await commandBus.execute(revokeCommand);
+    
+    // Get the key again - should be revoked
+    const getCommand2 = new GetKeyCommand(key.id);
+    const revokedKey = await commandBus.execute(getCommand2);
+    expect(revokedKey.status).toBe('revoked');
   });
 });
 ```

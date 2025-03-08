@@ -74,3 +74,47 @@ Key Manager Workers is a secure, scalable API key management service built on Cl
 ### Error Handling
 - ApiError class family defines domain errors
 - errorHandler middleware formats error responses
+
+## Testing Status
+
+### Passing Tests
+- Command objects: GetKeyCommand, ListKeysCommand, CleanupExpiredKeysCommand
+- Command handlers: GetKeyHandler, ListKeysHandler, CreateKeyHandler, CleanupExpiredKeysHandler
+- Domain models: ApiKeyManager
+- Security utilities
+
+### Failing Tests
+- CreateKeyCommand: Issues with mocking validateCreateKeyParams
+- KeysController: Test updates needed for command pattern
+- ValidationController: Test updates needed for command pattern
+- KeyValidator: Needs updating to new validation approach
+- DurableObject integration tests: Need updating for new architecture
+
+### Test Improvements Needed
+1. Fix import paths in jest.config.js and mock configurations
+2. Update auth-middleware tests to work with new authentication flow
+3. Fix key-validator tests to match new validation behavior
+4. Update KeyManagerDurableObject tests to work with the new structure
+5. Fix command validation tests
+
+## Refactoring Progress
+
+### Completed
+- Removed legacy handlers in src/handlers/
+- Implemented command pattern with command objects and handlers
+- Created comprehensive test utilities package
+- Updated documentation to reflect new architecture
+- Implemented clean architecture layers (domain, application, infrastructure, API)
+
+### In Progress
+- Completing tests for all command/handler pairs
+- Updating integration tests for new architecture
+- Fixing failing test configurations
+- Implementing remaining command/handler pairs (RevokeKey, RotateKey, ValidateKey)
+
+### Next Steps
+1. Fix the failing tests by updating mocks
+2. Create missing command/handler implementations
+3. Complete controller implementations for all endpoints
+4. Run integration tests with the working implementation
+5. Clean up any deprecated code paths

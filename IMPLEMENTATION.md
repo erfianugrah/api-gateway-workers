@@ -1,96 +1,163 @@
 # Key Manager Workers Implementation
 
-This document describes the implementation details of the enhanced key manager features.
+This document describes the implementation details of the key manager service, including architecture, patterns, and security features.
 
-## Features Added
+## Clean Architecture Implementation
 
-1. **Key Rotation with Grace Periods**
-   - Added ability to rotate API keys while maintaining a grace period for the old key
-   - Implemented `rotateKey` method in the `ApiKeyManager` class
-   - Added `POST /keys/:id/rotate` endpoint
+The codebase follows Clean Architecture principles, organized into layers:
 
-2. **HMAC Signature Verification**
-   - Added HMAC-based signatures for API keys for enhanced security
-   - Implemented in `generateHmac` and `verifyHmac` functions
-   - Integrated into key validation flow
+1. **Domain Layer (`src/core/`)**: 
+   - Contains business entities and services
+   - Defines interfaces for repositories and adapters
+   - Implements core business rules
 
-3. **Encryption at Rest**
-   - Implemented AES-GCM encryption for API key material
-   - Added versioning for future encryption algorithm changes
-   - Secured with environment-based encryption keys
+2. **Application Layer (`src/core/*/handlers/`)**: 
+   - Implements use cases through command handlers
+   - Coordinates business operations
+   - Manages domain events
 
-4. **Cursor-based Pagination**
-   - Added efficient cursor-based pagination for listing API keys
-   - Implemented `listKeysWithCursor` method
-   - Added `/keys-cursor` endpoint
+3. **Infrastructure Layer (`src/infrastructure/`)**: 
+   - Implements repository interfaces
+   - Manages configuration and dependency injection
+   - Handles HTTP routing and request/response
 
-5. **Improved Error Handling**
-   - Added transaction support for atomicity
-   - Implemented retry logic for critical operations
-   - Better error reporting
+4. **API Layer (`src/api/`)**: 
+   - Implements controllers for HTTP endpoints
+   - Handles request validation and formatting
+   - Converts between HTTP and domain objects
 
-## Implementation Details
+## Command Pattern Implementation
 
-### Key Rotation
+The service uses the Command pattern to encapsulate business operations:
 
-The key rotation feature works as follows:
+### Command Objects
 
-1. When a key is rotated:
-   - A new API key is created with the same properties (or updated properties if provided)
-   - The original key is marked as "rotated" and linked to the new key
-   - A rotation record is created with the grace period end timestamp
+Commands are immutable data objects that represent user intentions:
 
-2. During the grace period:
-   - Both the old and new keys will validate successfully
-   - The old key will include a warning message about the rotation
-   - Applications can seamlessly migrate to the new key
+```javascript
+export class CreateKeyCommand {
+  constructor(name, owner, scopes, expiresAt, metadata) {
+    this.name = name;
+    this.owner = owner;
+    this.scopes = scopes;
+    this.expiresAt = expiresAt;
+    this.metadata = metadata;
+  }
+}
+```
 
-3. After the grace period:
-   - The old key will no longer validate
-   - Rotation records are automatically cleaned up
+Each command:
+- Contains all data needed for the operation
+- Validates its parameters
+- Has no behavior, only data
 
-### Encryption and HMAC
+### Command Handlers
 
-The security implementation includes:
+Handlers implement the business logic for commands:
 
-1. Encryption at Rest:
+```javascript
+export class CreateKeyHandler {
+  constructor({ keyService }) {
+    this.keyService = keyService;
+  }
+
+  async handle(command) {
+    const { name, owner, scopes, expiresAt, metadata } = command;
+    return await this.keyService.createKey(name, owner, scopes, expiresAt, metadata);
+  }
+}
+```
+
+Each handler:
+- Receives dependencies through constructor injection
+- Implements a `handle` method for a specific command
+- Contains business logic for one use case
+- Returns a domain entity or data
+
+### Command Bus
+
+The CommandBus routes commands to their handlers:
+
+```javascript
+export class CommandBus {
+  constructor() {
+    this.handlers = new Map();
+  }
+
+  register(commandType, handler) {
+    this.handlers.set(commandType.name, handler);
+  }
+
+  async execute(command) {
+    const handler = this.handlers.get(command.constructor.name);
+    if (!handler) {
+      throw new Error(`No handler for command ${command.constructor.name}`);
+    }
+    return await handler.handle(command);
+  }
+}
+```
+
+The CommandBus:
+- Maps command types to handlers
+- Executes commands by delegating to handlers
+- Provides a central point for cross-cutting concerns
+
+## API Key Features
+
+### Key Creation and Management
+
+1. **Key Creation**:
+   - Creates API keys with name, owner, scopes
+   - Generates secure random key material
+   - Encrypts sensitive data
+   - Adds HMAC signature for verification
+
+2. **Key Validation**:
+   - Validates API keys against stored records
+   - Checks scopes and expiration
+   - Verifies HMAC signatures
+   - Returns validation results
+
+3. **Key Rotation**:
+   - Rotates API keys while maintaining a grace period
+   - Creates a new key with the same properties
+   - Links the old and new keys
+   - Manages the rotation lifecycle
+
+4. **Key Revocation**:
+   - Permanently revokes API keys
+   - Updates status and revocation timestamp
+   - Prevents further validation
+
+### Security Features
+
+1. **Encryption at Rest**:
    - Uses AES-GCM encryption for sensitive key material
    - Requires an `ENCRYPTION_KEY` environment variable
-   - Keys are only ever sent in plaintext at creation time
+   - Includes versioning for algorithm changes
 
-2. HMAC Signatures:
+2. **HMAC Signatures**:
    - Every key gets an HMAC signature based on its ID
    - Signatures are verified during validation
-   - Adds an extra layer of security against forged keys
+   - Prevents forged or tampered keys
 
-### Cursor-based Pagination
+3. **Role-Based Access Control**:
+   - Assigns roles to admin API keys
+   - Controls permissions based on roles
+   - Restricts administrative operations
 
-The cursor pagination implementation:
+### Data Management
 
-1. Uses efficient index entries for pagination
-2. Returns a cursor that can be used to fetch the next page
-3. Scales efficiently with large datasets
-4. Maintains backward compatibility with offset-based pagination
+1. **Durable Object Storage**:
+   - Uses Cloudflare Durable Objects for persistence
+   - Implements transaction support
+   - Provides atomicity for critical operations
 
-## Testing
-
-The code has been tested with unit tests covering the core functionality. Some tests need adjustments due to the addition of WebCrypto dependencies:
-
-1. **Mocking WebCrypto**: For proper testing, the WebCrypto API should be mocked. This has been partially implemented but would need to be completed for a production deployment.
-
-2. **Test Environment**: In a production environment, you would:
-   - Set up environment variables for `ENCRYPTION_KEY` and `HMAC_SECRET`
-   - Create proper test fixtures for WebCrypto
-   - Update the test suite to work with the new security features
-
-### Recommendations for Testing
-
-Before deploying to production:
-
-1. Set up proper WebCrypto mocks for testing
-2. Complete the test coverage for the new features
-3. Add integration tests for key rotation
-4. Set up performance tests for cursor-based pagination
+2. **Cursor-based Pagination**:
+   - Efficient listing of API keys
+   - Uses cursors for consistent pagination
+   - Scales to large datasets
 
 ## Configuration
 
@@ -99,9 +166,38 @@ The following environment variables should be set:
 - `ENCRYPTION_KEY`: Secret key for encrypting API keys at rest
 - `HMAC_SECRET`: Secret for generating HMAC signatures
 
+## Testing Implementation
+
+The codebase is designed for testability:
+
+1. **Dependency Injection**:
+   - All components receive dependencies through constructor
+   - TestContainer provides mock dependencies for tests
+   - Allows easy mocking and isolation
+
+2. **Interface-based Design**:
+   - Components depend on interfaces, not implementations
+   - Repository pattern abstracts storage details
+   - Easy to swap implementations for testing
+
+3. **Command Pattern Benefits**:
+   - Commands are pure data objects, easy to test
+   - Handlers contain isolated business logic
+   - CommandBus centralizes command execution
+
+### Test Organization
+
+Tests mirror the source code structure:
+- Command tests verify command parameters and validation
+- Handler tests verify business logic implementation
+- Controller tests verify HTTP handling
+- Integration tests verify complete workflows
+
 ## Future Improvements
 
 1. Add full key material rotation (re-encrypt all keys)
 2. Implement key hierarchies and delegated permissions
 3. Add webhook notifications for key lifecycle events
 4. Improve caching for frequently validated keys
+5. Implement event sourcing for audit trails
+6. Add bulk operations for key management
