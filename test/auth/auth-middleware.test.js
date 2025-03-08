@@ -3,9 +3,9 @@
  */
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 
-// We need to manually create the mock before importing
-jest.mock("../../src/auth/keyValidator", () => ({
-  validateApiKey: jest.fn().mockImplementation(async (apiKey, scopes, env) => {
+// Mock the keyValidator module *before* importing the module that uses it
+jest.mock("../../src/auth/keyValidator.js", () => ({
+  validateApiKey: jest.fn(async (apiKey, scopes, env) => {
     if (apiKey === "km_valid_admin_key") {
       return {
         valid: true,
@@ -34,6 +34,7 @@ jest.mock("../../src/auth/keyValidator", () => ({
 
 // Now import the auth middleware
 import { authMiddleware } from "../../src/auth/index.js";
+import { validateApiKey } from "../../src/auth/keyValidator.js";
 
 describe("Auth Middleware", () => {
   let mockRequest;
@@ -69,6 +70,11 @@ describe("Auth Middleware", () => {
 
     // Validation function should be called with the right arguments
     expect(mockRequest.headers.get).toHaveBeenCalledWith("X-Api-Key");
+    expect(validateApiKey).toHaveBeenCalledWith(
+      "km_valid_admin_key",
+      [],
+      mockEnv,
+    );
 
     // Result should indicate authorization
     expect(result.authorized).toBe(true);
@@ -102,8 +108,6 @@ describe("Auth Middleware", () => {
 
   it("should handle validation errors", async () => {
     // Modify our imported mock to throw an error
-    const validateApiKey =
-      require("../../src/auth/keyValidator").validateApiKey;
     validateApiKey.mockRejectedValueOnce(new Error("Validation error"));
 
     const result = await authMiddleware(mockRequest, mockEnv);
