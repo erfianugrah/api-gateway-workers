@@ -1,11 +1,14 @@
-/**
- * API Key Manager with Multi-Admin Support
- * Main entry point
- */
-
 import { KeyManagerDurableObject } from "./lib/KeyManagerDurableObject.js";
-import { errorResponse, successResponse } from "./utils/response.js";
-import * as auth from "./auth/index.js";
+import { createAuthMiddleware } from "./api/middleware/authMiddleware.js";
+import { errorHandler } from "./api/middleware/errorHandler.js";
+import { setupContainer } from "./infrastructure/di/setupContainer.js";
+import { setupConfig } from "./infrastructure/config/setupConfig.js";
+import { ForbiddenError, UnauthorizedError } from "./core/errors/ApiError.js";
+import { preflightResponse, successResponse } from "./utils/response.js";
+import { AuthService } from "./core/auth/AuthService.js";
+import { ApiKeyAdapter } from "./auth/adapters/ApiKeyAdapter.js";
+import { createApiKey } from "./auth/keyGenerator.js";
+import { logAdminAction } from "./auth/auditLogger.js";
 
 // Export the KeyManagerDurableObject
 export { KeyManagerDurableObject };
@@ -24,16 +27,16 @@ export default {
     try {
       // Check required bindings
       if (!env.KEY_MANAGER) {
-        return errorResponse(
-          "Service misconfigured: KEY_MANAGER binding not found",
-          500,
+        return errorHandler(
+          new Error("Service misconfigured: KEY_MANAGER binding not found"),
+          request,
         );
       }
 
       if (!env.KV) {
-        return errorResponse(
-          "Service misconfigured: KV binding not found",
-          500,
+        return errorHandler(
+          new Error("Service misconfigured: KV binding not found"),
+          request,
         );
       }
 
@@ -43,7 +46,7 @@ export default {
       if (url.pathname === "/health") {
         return successResponse({
           status: "healthy",
-          version: "1.0.0",
+          version: env.VERSION || "1.0.0",
           timestamp: Date.now(),
         }, {
           headers: {
@@ -52,14 +55,17 @@ export default {
         });
       }
 
+      // Set up config
+      const config = setupConfig(env);
+
       // Special first-time setup endpoint
       if (url.pathname === "/setup" && request.method === "POST") {
-        return handleSetup(request, env);
+        return handleSetup(request, env, config);
       }
 
       // Skip authentication for OPTIONS requests (CORS preflight)
       if (request.method === "OPTIONS") {
-        return handleCorsResponse();
+        return preflightResponse();
       }
 
       // Public endpoint that doesn't require authentication
@@ -78,14 +84,14 @@ export default {
         url.pathname.startsWith("/logs") ||
         url.pathname.startsWith("/maintenance")
       ) {
-        return handleAdminRequest(request, env);
+        return handleAdminRequest(request, env, config);
       }
 
       // Any other path not matched
-      return new Response("Not Found", { status: 404 });
+      return errorHandler(new Error("Not Found"), request);
     } catch (error) {
       console.error("Unhandled worker error:", error);
-      return errorResponse("An unexpected error occurred", 500);
+      return errorHandler(error, request);
     }
   },
 };
@@ -95,15 +101,19 @@ export default {
  *
  * @param {Request} request - HTTP request
  * @param {Env} env - Environment variables and bindings
+ * @param {Config} config - Configuration object
  * @returns {Promise<Response>} HTTP response
  */
-async function handleSetup(request, env) {
+async function handleSetup(request, env, config) {
   try {
     // Check if setup has already been completed
-    const setupCompleted = await auth.isSetupCompleted(env);
+    const setupCompleted = await env.KV.get("system:setup_completed");
 
-    if (setupCompleted) {
-      return errorResponse("Setup has already been completed", 403);
+    if (setupCompleted === "true") {
+      return errorHandler(
+        new ForbiddenError("Setup has already been completed"),
+        request,
+      );
     }
 
     // Parse admin data from request
@@ -111,18 +121,49 @@ async function handleSetup(request, env) {
     try {
       adminData = await request.json();
     } catch (error) {
-      return errorResponse("Invalid JSON in request body", 400);
+      return errorHandler(
+        new Error("Invalid JSON in request body"),
+        request,
+      );
     }
 
     // Validate required fields
     if (!adminData.name || !adminData.email) {
-      return errorResponse("Name and email are required", 400);
+      return errorHandler(
+        new Error("Name and email are required"),
+        request,
+      );
     }
 
-    // Create the first admin
-    const adminKey = await auth.setupFirstAdmin(adminData, env);
+    // Create the first admin with SUPER_ADMIN role
+    const adminKey = await createApiKey({
+      name: `${adminData.name} (Super Admin)`,
+      owner: adminData.name,
+      email: adminData.email,
+      role: "SUPER_ADMIN",
+      scopes: ["admin:keys:*", "admin:users:*", "admin:system:*"],
+      metadata: {
+        isFirstAdmin: true,
+        setupDate: new Date().toISOString(),
+      },
+    }, env);
 
-    // Return the admin key (only time it's returned)
+    // Mark setup as completed
+    await env.KV.put("system:setup_completed", "true");
+
+    // Log the setup event
+    await logAdminAction(
+      adminKey.id,
+      "system_setup",
+      {
+        adminName: adminData.name,
+        adminEmail: adminData.email,
+      },
+      env,
+      request,
+    );
+
+    // Return success
     return successResponse({
       message: "Initial setup completed successfully",
       id: adminKey.id,
@@ -135,7 +176,7 @@ async function handleSetup(request, env) {
     }, { status: 201 });
   } catch (error) {
     console.error("Setup error:", error);
-    return errorResponse(`Setup failed: ${error.message}`, 500);
+    return errorHandler(error, request);
   }
 }
 
@@ -144,31 +185,49 @@ async function handleSetup(request, env) {
  *
  * @param {Request} request - HTTP request
  * @param {Env} env - Environment variables and bindings
+ * @param {Config} config - Configuration object
  * @returns {Promise<Response>} HTTP response
  */
-async function handleAdminRequest(request, env) {
+async function handleAdminRequest(request, env, config) {
   try {
-    // Get the authentication result
-    const authResult = await auth.authMiddleware(request, env);
+    // Extract API key from header
+    const apiKey = request.headers.get("X-Api-Key");
+
+    // No API key provided
+    if (!apiKey) {
+      return errorHandler(
+        new UnauthorizedError("Authentication required"),
+        request,
+      );
+    }
+
+    // Create key service adapter for validation
+    const keyAdapter = new ApiKeyAdapter(env.KV);
+
+    // Create auth service
+    const authService = new AuthService(keyAdapter, { hasPermission });
+
+    // Validate the API key
+    const auth = await authService.authenticate(apiKey);
 
     // If not authorized, return the error
-    if (!authResult.authorized) {
-      return errorResponse(
-        authResult.error || "Authentication failed",
-        authResult.status || 401,
+    if (!auth.authenticated) {
+      return errorHandler(
+        new UnauthorizedError(auth.error || "Authentication failed"),
+        request,
       );
     }
 
     // Add admin info to the request
     const adminRequest = new Request(request);
-    adminRequest.headers.set("X-Admin-ID", authResult.adminKey.keyId);
+    adminRequest.headers.set("X-Admin-ID", auth.admin.keyId);
     adminRequest.headers.set(
       "X-Admin-Email",
-      authResult.adminKey.email || "unknown",
+      auth.admin.email || "unknown",
     );
     adminRequest.headers.set(
       "X-Admin-Role",
-      authResult.adminKey.role || "unknown",
+      auth.admin.role || "unknown",
     );
 
     // Forward to the Durable Object with a consistent ID
@@ -176,7 +235,7 @@ async function handleAdminRequest(request, env) {
     const keyManager = env.KEY_MANAGER.get(id);
 
     // Add request timeout
-    const timeoutMs = 10000; // 10 seconds
+    const timeoutMs = config.get("requestTimeout", 10000); // 10 seconds default
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -190,31 +249,65 @@ async function handleAdminRequest(request, env) {
       clearTimeout(timeoutId);
 
       if (error.name === "AbortError") {
-        return errorResponse("Request timed out", 504);
+        return errorHandler(
+          new Error("Request timed out"),
+          request,
+        );
       }
 
       console.error("Error forwarding request:", error);
-      return errorResponse("An unexpected error occurred", 500);
+      return errorHandler(error, request);
     }
   } catch (error) {
     console.error("Authentication error:", error);
-    return errorResponse("Authentication error", 500);
+    return errorHandler(error, request);
   }
 }
 
 /**
- * Handle CORS preflight requests
+ * Check if an admin has a specific permission
  *
- * @returns {Response} CORS response
+ * @param {Object} admin - Admin object with scopes
+ * @param {string} permission - Required permission
+ * @returns {boolean} True if admin has permission
  */
-function handleCorsResponse() {
-  return new Response(null, {
-    status: 204,
-    headers: {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type, X-Api-Key",
-      "Access-Control-Max-Age": "86400",
-    },
-  });
+function hasPermission(admin, permission) {
+  if (!admin || !admin.scopes) {
+    return false;
+  }
+
+  // Normalize required permission to lowercase for case-insensitive checks
+  const normalizedRequired = permission.toLowerCase();
+
+  // Check each scope in the admin key
+  for (const scope of admin.scopes) {
+    // Normalize to lowercase
+    const normalizedScope = scope.toLowerCase();
+
+    // Direct match - the admin has exactly this permission
+    if (normalizedScope === normalizedRequired) {
+      return true;
+    }
+
+    // Wildcard match at the end (e.g., "admin:keys:*")
+    if (normalizedScope.endsWith(":*")) {
+      // Get the base scope (everything before the "*")
+      const baseScope = normalizedScope.slice(0, -1);
+
+      // If the required permission starts with this base, it's a match
+      if (normalizedRequired.startsWith(baseScope)) {
+        return true;
+      }
+    }
+
+    // Full wildcard (e.g., "admin:*") - super admin case
+    if (normalizedScope === "admin:*") {
+      // If the required permission starts with "admin:", it's a match
+      if (normalizedRequired.startsWith("admin:")) {
+        return true;
+      }
+    }
+  }
+
+  return false;
 }

@@ -1,22 +1,9 @@
-/**
- * KeyManagerDurableObject
- * Updated to integrate with the auth module
- */
-
-import { Router } from "./router.js";
-import { ApiKeyManager } from "../models/ApiKeyManager.js";
-import {
-  handleCreateKey,
-  handleGetKey,
-  handleListKeys,
-  handleListKeysWithCursor,
-  handleRevokeKey,
-  handleRotateKey,
-} from "../handlers/keys.js";
-import { handleValidateKey } from "../handlers/validation.js";
-import { handleCleanup, handleHealthCheck } from "../handlers/system.js";
-import { hasPermission } from "../auth/roles.js";
-import { logAdminAction } from "../auth/auditLogger.js";
+import { setupContainer } from "../infrastructure/di/setupContainer.js";
+import { Router } from "../infrastructure/http/Router.js";
+import { createAuthMiddleware } from "../api/middleware/authMiddleware.js";
+import { errorHandler } from "../api/middleware/errorHandler.js";
+import { preflightResponse } from "../utils/response.js";
+import { getClientIp } from "../utils/security.js";
 
 /**
  * KeyManagerDurableObject is the main Durable Object for the API key manager
@@ -32,8 +19,18 @@ export class KeyManagerDurableObject {
     this.state = state;
     this.env = env;
 
-    // Initialize API Key Manager with environment variables
-    this.keyManager = new ApiKeyManager(state.storage, env);
+    // Set up dependency injection container
+    this.container = setupContainer(state, env);
+
+    // Initialize services
+    this.keyService = this.container.resolve("keyService");
+    this.authService = this.container.resolve("authService");
+    this.config = this.container.resolve("config");
+
+    // Get controllers
+    this.keysController = this.container.resolve("keysController");
+    this.validationController = this.container.resolve("validationController");
+    this.systemController = this.container.resolve("systemController");
 
     // Initialize router
     this.router = new Router();
@@ -49,272 +46,78 @@ export class KeyManagerDurableObject {
    * Set up route handlers
    */
   setupRoutes() {
-    // API key management routes
+    // CORS preflight handler
+    this.router.add("OPTIONS", "/*", (req) => {
+      return preflightResponse();
+    });
+
+    // Create auth middleware
+    const auth = (permission) =>
+      createAuthMiddleware(this.authService, permission);
+
+    // System routes
+    this.router.add("GET", "/health", this.systemController.getHealth);
+    this.router.add(
+      "POST",
+      "/maintenance/cleanup",
+      auth("admin:system:maintenance"),
+      this.systemController.runCleanup,
+    );
+
+    // Key validation route (public)
+    this.router.add("POST", "/validate", this.validationController.validateKey);
+
+    // Key management routes
     this.router.add(
       "GET",
       "/keys",
-      (req, ctx) =>
-        handleListKeys(
-          this.keyManager,
-          new URL(req.url),
-          extractAdminInfo(req),
-        ),
+      auth("admin:keys:read"),
+      this.keysController.listKeys,
     );
 
     this.router.add(
       "POST",
       "/keys",
-      (req, ctx) =>
-        handleCreateKey(this.keyManager, req, extractAdminInfo(req)),
+      auth("admin:keys:create"),
+      this.keysController.createKey,
     );
 
     this.router.add(
       "GET",
       "/keys/:id",
-      (req, ctx) =>
-        handleGetKey(this.keyManager, ctx.params.id, extractAdminInfo(req)),
+      auth("admin:keys:read"),
+      this.keysController.getKey,
     );
 
     this.router.add(
       "DELETE",
       "/keys/:id",
-      (req, ctx) =>
-        handleRevokeKey(
-          this.keyManager,
-          ctx.params.id,
-          req,
-          extractAdminInfo(req),
-        ),
+      auth("admin:keys:revoke"),
+      this.keysController.revokeKey,
     );
 
-    // Key rotation route
     this.router.add(
       "POST",
       "/keys/:id/rotate",
-      (req, ctx) =>
-        handleRotateKey(
-          this.keyManager,
-          ctx.params.id,
-          req,
-          extractAdminInfo(req),
-        ),
+      auth("admin:keys:update"),
+      this.keysController.rotateKey,
     );
 
-    // Validation route (public, no auth required)
-    this.router.add(
-      "POST",
-      "/validate",
-      (req, ctx) => handleValidateKey(this.keyManager, req),
-    );
-
-    // Cursor-based pagination route
+    // Cursor-based pagination
     this.router.add(
       "GET",
       "/keys-cursor",
-      (req, ctx) =>
-        handleListKeysWithCursor(
-          this.keyManager,
-          new URL(req.url),
-          extractAdminInfo(req),
-        ),
+      auth("admin:keys:read"),
+      this.keysController.listKeysWithCursor,
     );
 
-    // System routes (require admin:system:* permission)
-    this.router.add("GET", "/health", (req, ctx) => handleHealthCheck());
-
-    this.router.add("POST", "/maintenance/cleanup", async (req, ctx) => {
-      const adminInfo = extractAdminInfo(req);
-
-      // Check if admin has system permissions
-      if (!hasPermission(adminInfo, "admin:system:maintenance")) {
-        return new Response(
-          JSON.stringify({
-            error: "You do not have permission to run maintenance tasks",
-          }),
-          {
-            status: 403,
-            headers: { "Content-Type": "application/json" },
-          },
-        );
-      }
-
-      // Log the maintenance action
-      await logAdminAction(
-        adminInfo.keyId,
-        "system_maintenance",
-        { operation: "cleanup" },
-        this.env,
-      );
-
-      return handleCleanup(this.keyManager);
-    });
-
-    // Rotate encryption keys (extremely sensitive operation)
-    this.router.add("POST", "/maintenance/rotate-keys", async (req, ctx) => {
-      const adminInfo = extractAdminInfo(req);
-
-      // Check if admin has super admin permissions
-      if (!hasPermission(adminInfo, "admin:system:security")) {
-        return new Response(
-          JSON.stringify({
-            error: "This operation requires super admin privileges",
-          }),
-          {
-            status: 403,
-            headers: { "Content-Type": "application/json" },
-          },
-        );
-      }
-
-      try {
-        let requestBody;
-        try {
-          requestBody = await req.json();
-        } catch (error) {
-          return new Response(
-            JSON.stringify({
-              error: "Invalid JSON in request body",
-            }),
-            {
-              status: 400,
-              headers: { "Content-Type": "application/json" },
-            },
-          );
-        }
-
-        const { oldSecret, newSecret } = requestBody;
-        if (!oldSecret || !newSecret) {
-          return new Response(
-            JSON.stringify({
-              error: "Both oldSecret and newSecret are required",
-            }),
-            {
-              status: 400,
-              headers: { "Content-Type": "application/json" },
-            },
-          );
-        }
-
-        // Import the security utilities
-        const { rotateEncryptionMaterial, rotateHmacMaterial } = await import(
-          "../utils/security.js"
-        );
-
-        // Perform the rotation
-        const encryptionCount = await rotateEncryptionMaterial(
-          this.state.storage,
-          oldSecret,
-          newSecret,
-        );
-        const hmacCount = await rotateHmacMaterial(
-          this.state.storage,
-          oldSecret,
-          newSecret,
-        );
-
-        // Log the sensitive operation
-        await logAdminAction(
-          adminInfo.keyId,
-          "system_rotate_keys",
-          {
-            encryptionCount,
-            hmacCount,
-            timestamp: Date.now(),
-          },
-          this.env,
-        );
-
-        return new Response(
-          JSON.stringify({
-            success: true,
-            message: "Encryption and HMAC keys rotated successfully",
-            encryptionCount,
-            hmacCount,
-            timestamp: Date.now(),
-          }),
-          {
-            status: 200,
-            headers: { "Content-Type": "application/json" },
-          },
-        );
-      } catch (error) {
-        console.error("Key rotation error:", error);
-        return new Response(
-          JSON.stringify({
-            error: "Key rotation failed",
-            message: error.message,
-          }),
-          {
-            status: 500,
-            headers: { "Content-Type": "application/json" },
-          },
-        );
-      }
-    });
-
-    // Admin logs route
-    this.router.add("GET", "/logs/admin", async (req, ctx) => {
-      const adminInfo = extractAdminInfo(req);
-
-      // Check if admin has log viewing permissions
-      if (!hasPermission(adminInfo, "admin:system:logs")) {
-        return new Response(
-          JSON.stringify({
-            error: "You do not have permission to view logs",
-          }),
-          {
-            status: 403,
-            headers: { "Content-Type": "application/json" },
-          },
-        );
-      }
-
-      try {
-        // Get query parameters
-        const url = new URL(req.url);
-        const limit = url.searchParams.get("limit")
-          ? parseInt(url.searchParams.get("limit"))
-          : 50;
-        const cursor = url.searchParams.get("cursor") || null;
-        const action = url.searchParams.get("action") || null;
-        const adminId = url.searchParams.get("adminId") || null;
-
-        // Import the audit logger
-        const { getAdminLogs, getActionLogs, getCriticalLogs } = await import(
-          "../auth/auditLogger.js"
-        );
-
-        let logs;
-        if (adminId) {
-          logs = await getAdminLogs(adminId, { limit, cursor }, this.env);
-        } else if (action) {
-          logs = await getActionLogs(action, { limit, cursor }, this.env);
-        } else {
-          // Default to critical logs
-          logs = await getCriticalLogs({ limit, cursor }, this.env);
-        }
-
-        return new Response(
-          JSON.stringify(logs),
-          {
-            status: 200,
-            headers: { "Content-Type": "application/json" },
-          },
-        );
-      } catch (error) {
-        console.error("Error fetching logs:", error);
-        return new Response(
-          JSON.stringify({
-            error: "Failed to fetch logs",
-            message: error.message,
-          }),
-          {
-            status: 500,
-            headers: { "Content-Type": "application/json" },
-          },
-        );
-      }
-    });
+    // Admin log routes
+    this.router.add(
+      "GET",
+      "/logs/admin",
+      auth("admin:system:logs"),
+      this.systemController.getAdminLogs,
+    );
   }
 
   /**
@@ -323,8 +126,15 @@ export class KeyManagerDurableObject {
   setupMaintenance() {
     // Make sure setAlarm is supported (may not be in local dev environment)
     if (typeof this.state.setAlarm === "function") {
-      // Set up daily alarm for cleanup
-      this.state.setAlarm(Date.now() + 24 * 60 * 60 * 1000);
+      // Calculate alarm time from config
+      const cleanupIntervalHours = this.config.get(
+        "maintenance.cleanupIntervalHours",
+        24,
+      );
+      const alarmTime = Date.now() + cleanupIntervalHours * 60 * 60 * 1000;
+
+      // Set up alarm for cleanup
+      this.state.setAlarm(alarmTime);
     } else {
       console.log(
         "Alarms not supported in this environment - scheduled maintenance disabled",
@@ -338,19 +148,27 @@ export class KeyManagerDurableObject {
   async alarm() {
     try {
       // Clean up expired keys and rotations
-      const cleanupResult = await this.keyManager.cleanupExpiredKeys();
+      const cleanupResult = await this.keyService.cleanupExpiredKeys();
       console.log("Scheduled maintenance completed:", cleanupResult);
 
-      // Schedule next alarm if supported
+      // Schedule next alarm using config
       if (typeof this.state.setAlarm === "function") {
-        this.state.setAlarm(Date.now() + 24 * 60 * 60 * 1000);
+        const cleanupIntervalHours = this.config.get(
+          "maintenance.cleanupIntervalHours",
+          24,
+        );
+        this.state.setAlarm(Date.now() + cleanupIntervalHours * 60 * 60 * 1000);
       }
     } catch (error) {
       console.error("Error in alarm handler:", error);
 
-      // Retry sooner if there was an error and if alarms are supported
+      // Retry sooner if there was an error
       if (typeof this.state.setAlarm === "function") {
-        this.state.setAlarm(Date.now() + 60 * 60 * 1000); // 1 hour retry
+        const retryIntervalHours = this.config.get(
+          "maintenance.retryIntervalHours",
+          1,
+        );
+        this.state.setAlarm(Date.now() + retryIntervalHours * 60 * 60 * 1000);
       }
     }
   }
@@ -362,25 +180,43 @@ export class KeyManagerDurableObject {
    * @returns {Promise<Response>} HTTP response
    */
   async fetch(request) {
-    return this.router.handle(request, {
-      storage: this.state.storage,
-      env: this.env,
-    });
-  }
-}
+    try {
+      // Add rate limiting info if available
+      const context = {
+        storage: this.state.storage,
+        env: this.env,
+      };
 
-/**
- * Extract admin information from request headers
- *
- * @param {Request} request - HTTP request
- * @returns {Object} Admin information
- */
-function extractAdminInfo(request) {
-  return {
-    keyId: request.headers.get("X-Admin-ID") || null,
-    email: request.headers.get("X-Admin-Email") || null,
-    role: request.headers.get("X-Admin-Role") || null,
-    scopes: [], // We don't have the scopes here - they're checked in the parent worker
-    valid: true,
-  };
+      // If rate limiting is available, apply it
+      if (this.container.has("rateLimiter")) {
+        try {
+          const rateLimiter = this.container.resolve("rateLimiter");
+          const clientIp = getClientIp(request);
+          const path = new URL(request.url).pathname;
+
+          const rateLimit = await rateLimiter.checkLimit(clientIp, path);
+
+          // Add rate limit headers to context
+          context.rateLimit = {
+            "X-RateLimit-Limit": rateLimit.limit.toString(),
+            "X-RateLimit-Remaining": rateLimit.remaining.toString(),
+            "X-RateLimit-Reset": Math.ceil(rateLimit.reset / 1000).toString(),
+          };
+        } catch (error) {
+          // If rate limited, return appropriate response
+          if (error.name === "RateLimitError") {
+            return errorHandler(error, request);
+          }
+
+          // Otherwise just log the error and continue
+          console.error("Rate limiting error:", error);
+        }
+      }
+
+      return await this.router.handle(request, context);
+    } catch (error) {
+      // Use the error handler for standardized error responses
+      return errorHandler(error, request);
+    }
+  }
 }
