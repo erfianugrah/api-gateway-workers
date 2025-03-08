@@ -51,9 +51,27 @@ npm run test:coverage
 
 ## Test Structure
 
-The tests are organized to cover different aspects of the API Key Manager:
+The tests are organized following the clean architecture patterns of the application:
 
-### 1. Unit Tests
+### 1. Core Tests
+
+- `core/keys/commands/*.test.js` - Test command objects
+- `core/keys/handlers/*.test.js` - Test command handlers
+- `core/auth/*.test.js` - Test auth services
+- `core/security/*.test.js` - Test security services
+
+### 2. API Tests
+
+- `api/controllers/*.test.js` - Test API controllers
+- `api/middleware/*.test.js` - Test middleware functions
+
+### 3. Infrastructure Tests
+
+- `infrastructure/storage/*.test.js` - Test storage implementations
+- `infrastructure/http/*.test.js` - Test routing
+- `infrastructure/config/*.test.js` - Test configuration
+
+### 4. Legacy Auth Tests
 
 - `auth/keyGenerator.test.js` - Test API key generation
 - `auth/keyValidator.test.js` - Test API key validation
@@ -61,15 +79,13 @@ The tests are organized to cover different aspects of the API Key Manager:
 - `auth/adminManager.test.js` - Test admin user management
 - `auth/auditLogger.test.js` - Test audit logging
 
-### 2. Integration Tests
+### 5. Integration Tests
 
-- `integration/setup.test.js` - Test first-time setup
-- `integration/admin.test.js` - Test admin operations
-- `integration/keys.test.js` - Test API key management
+- `lib/KeyManagerDurableObject.test.js` - Test the Durable Object implementation
 
-### 3. End-to-End Tests
+### 6. End-to-End Tests
 
-The `e2e.test.js` file contains end-to-end tests that simulate real-world usage.
+The integration test script in `test/integration-test.sh` contains end-to-end tests that simulate real-world usage.
 
 ## Manual Testing
 
@@ -181,33 +197,120 @@ curl -X POST https://your-worker.workers.dev/keys \
 
 - **"Permission denied"**: Check that your test admin has the correct role and permissions.
 
+## Test Utilities
+
+The project includes a comprehensive test utilities package in `test/utils/` to simplify writing tests:
+
+### Test Container
+
+The `TestContainer` class provides a dependency injection container with pre-configured mocks:
+
+```javascript
+import { TestContainer } from '../utils/index.js';
+
+describe('MyComponent', () => {
+  let container;
+  
+  beforeEach(() => {
+    container = new TestContainer();
+  });
+  
+  it('should perform some action', () => {
+    const service = container.resolve('keyService');
+    // Test with the mocked service
+  });
+});
+```
+
+### Mock Factory Functions
+
+The utilities package includes mock factory functions for different components:
+
+```javascript
+import { 
+  createMockStorage,
+  createMockKeyService,
+  createMockRequest, 
+  createMockContext
+} from '../utils/index.js';
+
+// Create a mock storage implementation
+const storage = createMockStorage();
+
+// Create a mock request for controller testing
+const request = createMockRequest({
+  method: 'POST',
+  url: 'http://example.com/keys',
+  body: { name: 'Test Key' }
+});
+```
+
+### Test Environment Setup
+
+For complete test setup with time and crypto mocking:
+
+```javascript
+import { setupTestEnvironment } from '../utils/index.js';
+
+describe('My Test Suite', () => {
+  let { container, teardown } = setupTestEnvironment({
+    mockTimeValue: 1000000
+  });
+  
+  afterEach(() => {
+    teardown();
+  });
+  
+  it('should do something', () => {
+    // Test with the container and mock time
+    expect(Date.now()).toBe(1000000);
+  });
+});
+```
+
 ## Writing New Tests
 
 When writing new tests:
 
-1. Use the `jest.mock()` function to mock the KV namespace
-2. Create test fixtures for API keys and admin users
+1. Use the test utilities package for common setup and mocks
+2. Follow the clean architecture pattern, testing each layer independently
 3. Test both success and failure paths
 4. Verify that permissions are correctly enforced
 5. Check that audit logs are created as expected
 
-Example test:
+Example Controller test:
 
 ```javascript
-describe('Admin API key creation', () => {
-  it('should create an admin key with the correct permissions', async () => {
-    const adminData = {
-      name: 'Test Admin',
-      email: 'test@example.com',
-      role: 'KEY_ADMIN'
-    };
+import { TestContainer, createMockRequest, createMockContext } from '../utils/index.js';
+import { KeysController } from '../../src/api/controllers/KeysController.js';
+
+describe('KeysController', () => {
+  let container;
+  let controller;
+  
+  beforeEach(() => {
+    container = new TestContainer();
+    controller = new KeysController({
+      keyService: container.resolve('keyService'),
+      authService: container.resolve('authService'),
+      commandBus: container.resolve('commandBus'),
+      auditLogger: container.resolve('auditLogger'),
+    });
+  });
+  
+  it('should create a key', async () => {
+    const request = createMockRequest({
+      method: 'POST',
+      body: { name: 'Test Key', owner: 'test@example.com' }
+    });
     
-    const adminKey = await createAdminKey(adminData, mockEnv);
+    const context = createMockContext();
     
-    expect(adminKey).toBeDefined();
-    expect(adminKey.scopes).toContain('admin:keys:create');
-    expect(adminKey.scopes).toContain('admin:keys:read');
-    expect(adminKey.scopes).toContain('admin:keys:revoke');
+    const response = await controller.createKey(request, context);
+    
+    expect(response.status).toBe(201);
+    const body = await response.json();
+    expect(body.id).toBeDefined();
   });
 });
 ```
