@@ -65,9 +65,9 @@ Update your `src/lib/KeyManagerDurableObject.js` to:
 2. Pass admin information to route handlers
 3. Add permission checks for protected operations
 
-### Step 5: Update Route Handlers
+### Step 5: Update Controllers
 
-Update your route handlers in `src/handlers/keys.js` to:
+Update your controllers in `src/api/controllers/` to:
 
 1. Accept admin information as a parameter
 2. Check permissions using the `hasPermission` function

@@ -214,13 +214,7 @@ export class Router {
   errorResponse(error, request) {
     console.error("Router error:", error);
 
-    // Try to get error handler from context
-    const { errorHandler } = require("../../api/middleware/errorHandler.js");
-    if (errorHandler) {
-      return errorHandler(error, request);
-    }
-
-    // Basic error handling if errorHandler not available
+    // Basic error handling
     return new Response(
       JSON.stringify({
         error: "An unexpected error occurred",
