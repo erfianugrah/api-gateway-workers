@@ -8,6 +8,7 @@ import {
   errorResponse,
   notFoundResponse,
   successResponse,
+  validationErrorResponse,
 } from "../utils/response.js";
 import {
   validateCreateKeyParams,
@@ -44,9 +45,8 @@ export async function handleListKeys(keyManager, url, adminInfo) {
   const validation = validatePaginationParams(limit, offset);
 
   if (!validation.isValid) {
-    return errorResponse(
+    return validationErrorResponse(
       "Invalid pagination parameters",
-      400,
       validation.errors,
     );
   }
@@ -96,7 +96,7 @@ export async function handleCreateKey(keyManager, request, adminInfo) {
   const validation = validateCreateKeyParams(body);
 
   if (!validation.isValid) {
-    return errorResponse("Validation failed", 400, validation.errors);
+    return validationErrorResponse("Validation failed", validation.errors);
   }
 
   // Add admin info to the key data
@@ -104,28 +104,34 @@ export async function handleCreateKey(keyManager, request, adminInfo) {
   body.metadata = {
     ...(body.metadata || {}),
     createdByAdmin: adminInfo.email,
-    createdByAdminRole: adminInfo.role,
+    createdAt: new Date().toISOString(),
   };
 
-  // Create the key
-  const apiKey = await keyManager.createKey(body);
+  try {
+    // Create the key
+    const apiKey = await keyManager.createKey(body);
 
-  // Log this action
-  await logAdminAction(adminInfo.keyId, "create_key", {
-    keyId: apiKey.id,
-    name: body.name,
-    owner: body.owner,
-    scopes: body.scopes,
-  }, keyManager.env);
+    // Log this action
+    await logAdminAction(
+      adminInfo.keyId,
+      "create_key",
+      {
+        keyId: apiKey.id,
+        name: body.name,
+        owner: body.owner,
+        scopes: body.scopes,
+        expiresAt: body.expiresAt || 0,
+      },
+      keyManager.env,
+      request,
+    );
 
-  // Don't include the hashed key in the response
-  const { key: hiddenKey, ...safeKey } = apiKey;
-
-  // Return the key with the actual key value (only time it's returned)
-  return createdResponse({
-    ...safeKey,
-    key: apiKey.key,
-  });
+    // Return the key with the actual key value (only time it's returned)
+    return createdResponse(apiKey);
+  } catch (error) {
+    console.error("Error creating key:", error);
+    return errorResponse(`Failed to create key: ${error.message}`, 500);
+  }
 }
 
 /**
@@ -153,10 +159,7 @@ export async function handleGetKey(keyManager, keyId, adminInfo) {
     keyId: keyId,
   }, keyManager.env);
 
-  // Don't include the actual key in the response
-  const { key, ...safeKey } = apiKey;
-
-  return successResponse(safeKey);
+  return successResponse(apiKey);
 }
 
 /**
@@ -195,10 +198,16 @@ export async function handleRevokeKey(keyManager, keyId, request, adminInfo) {
   }
 
   // Log this action
-  await logAdminAction(adminInfo.keyId, "revoke_key", {
-    keyId: keyId,
-    reason: reason,
-  }, keyManager.env);
+  await logAdminAction(
+    adminInfo.keyId,
+    "revoke_key",
+    {
+      keyId: keyId,
+      reason: reason,
+    },
+    keyManager.env,
+    request,
+  );
 
   return successResponse(result);
 }
@@ -231,7 +240,7 @@ export async function handleRotateKey(keyManager, keyId, request, adminInfo) {
     const validation = validateKeyRotationParams(body);
 
     if (!validation.isValid) {
-      return errorResponse("Validation failed", 400, validation.errors);
+      return validationErrorResponse("Validation failed", validation.errors);
     }
   }
 
@@ -255,11 +264,17 @@ export async function handleRotateKey(keyManager, keyId, request, adminInfo) {
   }
 
   // Log this action
-  await logAdminAction(adminInfo.keyId, "rotate_key", {
-    keyId: keyId,
-    newKeyId: result.newKey.id,
-    gracePeriodDays,
-  }, keyManager.env);
+  await logAdminAction(
+    adminInfo.keyId,
+    "rotate_key",
+    {
+      keyId: keyId,
+      newKeyId: result.newKey.id,
+      gracePeriodDays,
+    },
+    keyManager.env,
+    request,
+  );
 
   return successResponse(result);
 }
@@ -289,9 +304,8 @@ export async function handleListKeysWithCursor(keyManager, url, adminInfo) {
   const validation = validateCursorParams(limit, cursor);
 
   if (!validation.isValid) {
-    return errorResponse(
+    return validationErrorResponse(
       "Invalid pagination parameters",
-      400,
       validation.errors,
     );
   }

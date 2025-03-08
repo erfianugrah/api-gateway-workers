@@ -30,8 +30,10 @@ export async function generateSecureApiKey() {
  * @param {string} keyData.owner - Owner of the key
  * @param {string} keyData.email - Email associated with the key
  * @param {string[]} keyData.scopes - Permission scopes for the key
+ * @param {string} keyData.role - Role name for admin keys
  * @param {number} [keyData.expiresAt] - Optional expiration timestamp
  * @param {string} [keyData.createdBy] - ID of admin who created this key
+ * @param {Object} [keyData.metadata] - Additional metadata for the key
  * @param {Object} env - Environment variables and bindings
  * @returns {Promise<Object>} The created key
  */

@@ -3,7 +3,6 @@
  * Updated to integrate with the auth module
  */
 
-import { DurableObject } from "cloudflare:workers";
 import { Router } from "./router.js";
 import { ApiKeyManager } from "../models/ApiKeyManager.js";
 import {
@@ -17,11 +16,12 @@ import {
 import { handleValidateKey } from "../handlers/validation.js";
 import { handleCleanup, handleHealthCheck } from "../handlers/system.js";
 import { hasPermission } from "../auth/roles.js";
+import { logAdminAction } from "../auth/auditLogger.js";
 
 /**
  * KeyManagerDurableObject is the main Durable Object for the API key manager
  */
-export class KeyManagerDurableObject extends DurableObject {
+export class KeyManagerDurableObject {
   /**
    * Initialize the KeyManagerDurableObject
    *
@@ -29,7 +29,6 @@ export class KeyManagerDurableObject extends DurableObject {
    * @param {Env} env - Environment bindings
    */
   constructor(state, env) {
-    super(state, env);
     this.state = state;
     this.env = env;
 
@@ -123,7 +122,7 @@ export class KeyManagerDurableObject extends DurableObject {
     // System routes (require admin:system:* permission)
     this.router.add("GET", "/health", (req, ctx) => handleHealthCheck());
 
-    this.router.add("POST", "/maintenance/cleanup", (req, ctx) => {
+    this.router.add("POST", "/maintenance/cleanup", async (req, ctx) => {
       const adminInfo = extractAdminInfo(req);
 
       // Check if admin has system permissions
@@ -139,11 +138,122 @@ export class KeyManagerDurableObject extends DurableObject {
         );
       }
 
+      // Log the maintenance action
+      await logAdminAction(
+        adminInfo.keyId,
+        "system_maintenance",
+        { operation: "cleanup" },
+        this.env,
+      );
+
       return handleCleanup(this.keyManager);
     });
 
+    // Rotate encryption keys (extremely sensitive operation)
+    this.router.add("POST", "/maintenance/rotate-keys", async (req, ctx) => {
+      const adminInfo = extractAdminInfo(req);
+
+      // Check if admin has super admin permissions
+      if (!hasPermission(adminInfo, "admin:system:security")) {
+        return new Response(
+          JSON.stringify({
+            error: "This operation requires super admin privileges",
+          }),
+          {
+            status: 403,
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+      }
+
+      try {
+        let requestBody;
+        try {
+          requestBody = await req.json();
+        } catch (error) {
+          return new Response(
+            JSON.stringify({
+              error: "Invalid JSON in request body",
+            }),
+            {
+              status: 400,
+              headers: { "Content-Type": "application/json" },
+            },
+          );
+        }
+
+        const { oldSecret, newSecret } = requestBody;
+        if (!oldSecret || !newSecret) {
+          return new Response(
+            JSON.stringify({
+              error: "Both oldSecret and newSecret are required",
+            }),
+            {
+              status: 400,
+              headers: { "Content-Type": "application/json" },
+            },
+          );
+        }
+
+        // Import the security utilities
+        const { rotateEncryptionMaterial, rotateHmacMaterial } = await import(
+          "../utils/security.js"
+        );
+
+        // Perform the rotation
+        const encryptionCount = await rotateEncryptionMaterial(
+          this.state.storage,
+          oldSecret,
+          newSecret,
+        );
+        const hmacCount = await rotateHmacMaterial(
+          this.state.storage,
+          oldSecret,
+          newSecret,
+        );
+
+        // Log the sensitive operation
+        await logAdminAction(
+          adminInfo.keyId,
+          "system_rotate_keys",
+          {
+            encryptionCount,
+            hmacCount,
+            timestamp: Date.now(),
+          },
+          this.env,
+        );
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            message: "Encryption and HMAC keys rotated successfully",
+            encryptionCount,
+            hmacCount,
+            timestamp: Date.now(),
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+      } catch (error) {
+        console.error("Key rotation error:", error);
+        return new Response(
+          JSON.stringify({
+            error: "Key rotation failed",
+            message: error.message,
+          }),
+          {
+            status: 500,
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+      }
+    });
+
     // Admin logs route
-    this.router.add("GET", "/logs/admin", (req, ctx) => {
+    this.router.add("GET", "/logs/admin", async (req, ctx) => {
       const adminInfo = extractAdminInfo(req);
 
       // Check if admin has log viewing permissions
@@ -159,16 +269,51 @@ export class KeyManagerDurableObject extends DurableObject {
         );
       }
 
-      // TODO: Implement logs viewing
-      return new Response(
-        JSON.stringify({
-          message: "Logs viewing to be implemented",
-        }),
-        {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        },
-      );
+      try {
+        // Get query parameters
+        const url = new URL(req.url);
+        const limit = url.searchParams.get("limit")
+          ? parseInt(url.searchParams.get("limit"))
+          : 50;
+        const cursor = url.searchParams.get("cursor") || null;
+        const action = url.searchParams.get("action") || null;
+        const adminId = url.searchParams.get("adminId") || null;
+
+        // Import the audit logger
+        const { getAdminLogs, getActionLogs, getCriticalLogs } = await import(
+          "../auth/auditLogger.js"
+        );
+
+        let logs;
+        if (adminId) {
+          logs = await getAdminLogs(adminId, { limit, cursor }, this.env);
+        } else if (action) {
+          logs = await getActionLogs(action, { limit, cursor }, this.env);
+        } else {
+          // Default to critical logs
+          logs = await getCriticalLogs({ limit, cursor }, this.env);
+        }
+
+        return new Response(
+          JSON.stringify(logs),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+      } catch (error) {
+        console.error("Error fetching logs:", error);
+        return new Response(
+          JSON.stringify({
+            error: "Failed to fetch logs",
+            message: error.message,
+          }),
+          {
+            status: 500,
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+      }
     });
   }
 
@@ -192,8 +337,9 @@ export class KeyManagerDurableObject extends DurableObject {
    */
   async alarm() {
     try {
-      // Clean up expired keys
-      await this.keyManager.cleanupExpiredKeys();
+      // Clean up expired keys and rotations
+      const cleanupResult = await this.keyManager.cleanupExpiredKeys();
+      console.log("Scheduled maintenance completed:", cleanupResult);
 
       // Schedule next alarm if supported
       if (typeof this.state.setAlarm === "function") {

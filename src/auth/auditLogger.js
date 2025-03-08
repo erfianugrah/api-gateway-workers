@@ -19,8 +19,10 @@ export async function logAdminAction(adminId, action, details, env, request) {
 
   // Get client IP if request is provided
   let clientIp = "unknown";
+  let userAgent = "unknown";
   if (request) {
     clientIp = getClientIp(request);
+    userAgent = request.headers.get("User-Agent") || "unknown";
   }
 
   // Create log entry
@@ -31,7 +33,7 @@ export async function logAdminAction(adminId, action, details, env, request) {
     action: action,
     details: details || {},
     ip: clientIp,
-    userAgent: request ? request.headers.get("User-Agent") : "unknown",
+    userAgent: userAgent,
   };
 
   // Store log entry
@@ -64,12 +66,12 @@ export async function logAdminAction(adminId, action, details, env, request) {
  */
 export async function getAdminLogs(adminId, options = {}, env) {
   const limit = options.limit || 50;
-  let startAfter = options.cursor || "";
+  let cursor = options.cursor || "";
 
   // List logs for the admin
   const logIndices = await env.KV.list({
     prefix: `log:admin:by_admin:${adminId}:`,
-    cursor: startAfter,
+    cursor: cursor,
     limit: limit,
   });
 
@@ -122,12 +124,12 @@ export async function getAdminLogs(adminId, options = {}, env) {
  */
 export async function getActionLogs(action, options = {}, env) {
   const limit = options.limit || 50;
-  let startAfter = options.cursor || "";
+  let cursor = options.cursor || "";
 
   // List logs for the action
   const logIndices = await env.KV.list({
     prefix: `log:admin:by_action:${action}:`,
-    cursor: startAfter,
+    cursor: cursor,
     limit: limit,
   });
 
@@ -179,12 +181,12 @@ export async function getActionLogs(action, options = {}, env) {
  */
 export async function getCriticalLogs(options = {}, env) {
   const limit = options.limit || 50;
-  let startAfter = options.cursor || "";
+  let cursor = options.cursor || "";
 
   // List critical logs
   const logIndices = await env.KV.list({
     prefix: "log:admin:critical:",
-    cursor: startAfter,
+    cursor: cursor,
     limit: limit,
   });
 
@@ -234,11 +236,12 @@ export async function getCriticalLogs(options = {}, env) {
 function isCriticalAction(action) {
   const criticalActions = [
     "system_setup",
+    "system_config_change",
+    "system_rotate_keys",
     "create_admin",
     "revoke_admin",
     "update_admin_permissions",
     "revoke_key_batch",
-    "system_config_change",
     "key_rotation",
   ];
 

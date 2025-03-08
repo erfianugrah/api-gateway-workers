@@ -60,6 +60,8 @@ export const PERMISSION_SCOPES = {
   // System management permissions
   "admin:system:logs": "View system logs",
   "admin:system:config": "Modify system configuration",
+  "admin:system:maintenance": "Perform system maintenance",
+  "admin:system:security": "Manage security settings and keys",
   "admin:system:*": "Full access to system management",
 };
 
@@ -71,56 +73,45 @@ export const PERMISSION_SCOPES = {
  * @returns {boolean} True if admin has the required permission
  */
 export function hasPermission(adminKey, requiredPermission) {
+  // Validate input
   if (!adminKey || !adminKey.scopes) {
     return false;
   }
 
-  // Check for direct permission match
-  if (adminKey.scopes.includes(requiredPermission)) {
-    return true;
-  }
+  // Normalize required permission to lowercase for case-insensitive checks
+  const normalizedRequired = requiredPermission.toLowerCase();
 
-  // Check for wildcard permissions
-  const requiredParts = requiredPermission.split(":");
-
+  // Check each scope in the admin key
   for (const scope of adminKey.scopes) {
-    const scopeParts = scope.split(":");
+    // Normalize to lowercase
+    const normalizedScope = scope.toLowerCase();
 
-    // Different length, can't match (unless wildcard)
-    if (
-      scopeParts.length !== requiredParts.length &&
-      !scope.endsWith("*")
-    ) {
-      continue;
+    // Direct match - the admin has exactly this permission
+    if (normalizedScope === normalizedRequired) {
+      return true;
     }
 
-    // Check for wildcard at the end (e.g., admin:keys:*)
-    if (scope.endsWith(":*")) {
-      const baseScope = scope.substring(0, scope.length - 2);
-      const requiredBase = requiredPermission.substring(
-        0,
-        requiredPermission.lastIndexOf(":"),
-      );
+    // Wildcard match at the end (e.g., "admin:keys:*")
+    if (normalizedScope.endsWith(":*")) {
+      // Get the base scope (everything before the "*")
+      const baseScope = normalizedScope.slice(0, -1);
 
-      if (baseScope === requiredBase) {
+      // If the required permission starts with this base, it's a match
+      if (normalizedRequired.startsWith(baseScope)) {
         return true;
       }
     }
 
-    // Check each part
-    let match = true;
-    for (let i = 0; i < scopeParts.length; i++) {
-      if (scopeParts[i] !== requiredParts[i] && scopeParts[i] !== "*") {
-        match = false;
-        break;
+    // Full wildcard (e.g., "admin:*") - super admin case
+    if (normalizedScope === "admin:*") {
+      // If the required permission starts with "admin:", it's a match
+      if (normalizedRequired.startsWith("admin:")) {
+        return true;
       }
-    }
-
-    if (match) {
-      return true;
     }
   }
 
+  // No matching permission found
   return false;
 }
 

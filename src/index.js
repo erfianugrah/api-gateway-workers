@@ -30,6 +30,13 @@ export default {
         );
       }
 
+      if (!env.KV) {
+        return errorResponse(
+          "Service misconfigured: KV binding not found",
+          500,
+        );
+      }
+
       const url = new URL(request.url);
 
       // Quick health check (doesn't hit Durable Object)
@@ -55,7 +62,7 @@ export default {
         return handleCorsResponse();
       }
 
-      // Skip authentication for the /validate endpoint
+      // Public endpoint that doesn't require authentication
       if (url.pathname === "/validate") {
         // Forward to the Durable Object
         const id = env.KEY_MANAGER.idFromName("global");
@@ -66,8 +73,10 @@ export default {
       // All other endpoints require admin authentication
       if (
         url.pathname.startsWith("/keys") ||
+        url.pathname.startsWith("/keys-cursor") ||
         url.pathname.startsWith("/admin") ||
-        url.pathname.startsWith("/logs")
+        url.pathname.startsWith("/logs") ||
+        url.pathname.startsWith("/maintenance")
       ) {
         return handleAdminRequest(request, env);
       }
@@ -98,7 +107,12 @@ async function handleSetup(request, env) {
     }
 
     // Parse admin data from request
-    const adminData = await request.json();
+    let adminData;
+    try {
+      adminData = await request.json();
+    } catch (error) {
+      return errorResponse("Invalid JSON in request body", 400);
+    }
 
     // Validate required fields
     if (!adminData.name || !adminData.email) {
@@ -133,61 +147,58 @@ async function handleSetup(request, env) {
  * @returns {Promise<Response>} HTTP response
  */
 async function handleAdminRequest(request, env) {
-  // Extract API key from header
-  const apiKey = request.headers.get("X-Api-Key");
-
-  // No API key provided
-  if (!apiKey) {
-    return errorResponse("Authentication required", 401);
-  }
-
-  // Validate the API key
-  const result = await auth.validateApiKey(apiKey, [], env);
-
-  // Invalid API key
-  if (!result.valid) {
-    return errorResponse(result.error || "Invalid API key", 401);
-  }
-
-  // Check if key has any admin scopes
-  const hasAdminScope = result.scopes.some((scope) =>
-    scope.startsWith("admin:")
-  );
-
-  if (!hasAdminScope) {
-    return errorResponse("This API key lacks administrative permissions", 403);
-  }
-
-  // Add admin info to the request
-  const adminRequest = new Request(request);
-  adminRequest.headers.set("X-Admin-ID", result.keyId);
-  adminRequest.headers.set("X-Admin-Email", result.email || "unknown");
-  adminRequest.headers.set("X-Admin-Role", result.role || "unknown");
-
-  // Forward to the Durable Object with a consistent ID
-  const id = env.KEY_MANAGER.idFromName("global");
-  const keyManager = env.KEY_MANAGER.get(id);
-
-  // Add request timeout
-  const timeoutMs = 10000; // 10 seconds
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-
   try {
-    const response = await keyManager.fetch(adminRequest, {
-      signal: controller.signal,
-    });
-    clearTimeout(timeoutId);
-    return response;
-  } catch (error) {
-    clearTimeout(timeoutId);
+    // Get the authentication result
+    const authResult = await auth.authMiddleware(request, env);
 
-    if (error.name === "AbortError") {
-      return errorResponse("Request timed out", 504);
+    // If not authorized, return the error
+    if (!authResult.authorized) {
+      return errorResponse(
+        authResult.error || "Authentication failed",
+        authResult.status || 401,
+      );
     }
 
-    console.error("Error forwarding request:", error);
-    return errorResponse("An unexpected error occurred", 500);
+    // Add admin info to the request
+    const adminRequest = new Request(request);
+    adminRequest.headers.set("X-Admin-ID", authResult.adminKey.keyId);
+    adminRequest.headers.set(
+      "X-Admin-Email",
+      authResult.adminKey.email || "unknown",
+    );
+    adminRequest.headers.set(
+      "X-Admin-Role",
+      authResult.adminKey.role || "unknown",
+    );
+
+    // Forward to the Durable Object with a consistent ID
+    const id = env.KEY_MANAGER.idFromName("global");
+    const keyManager = env.KEY_MANAGER.get(id);
+
+    // Add request timeout
+    const timeoutMs = 10000; // 10 seconds
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      const response = await keyManager.fetch(adminRequest, {
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+      return response;
+    } catch (error) {
+      clearTimeout(timeoutId);
+
+      if (error.name === "AbortError") {
+        return errorResponse("Request timed out", 504);
+      }
+
+      console.error("Error forwarding request:", error);
+      return errorResponse("An unexpected error occurred", 500);
+    }
+  } catch (error) {
+    console.error("Authentication error:", error);
+    return errorResponse("Authentication error", 500);
   }
 }
 
