@@ -5,7 +5,7 @@
  * @param {Object} env - Environment variables
  * @returns {Promise<Object>} Created API key
  */
-export async function createApiKey(keyData, env) {
+export const createApiKey = jest.fn(async (keyData, env) => {
   return {
     id: "test-key-id",
     key: "km_test_key_value",
@@ -17,4 +17,4 @@ export async function createApiKey(keyData, env) {
     createdAt: Date.now(),
     expiresAt: keyData.expiresAt || 0,
   };
-}
+});

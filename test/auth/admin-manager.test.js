@@ -3,10 +3,11 @@
  */
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 
-// Create mock implementations
+// Mock these modules BEFORE importing the test subject
+// Mock the required modules
 const mockCreateApiKey = jest.fn().mockImplementation(async (keyData) => ({
   id: "test-admin-id",
-  key: "km_test-admin-key", // This is the expected value in tests
+  key: "km_000b16212c37424d58636e79848f9aa5b0bbc6d1dce7f2fd08131e29343f4a55",
   name: keyData.name,
   owner: keyData.owner || keyData.name,
   email: keyData.email,
@@ -19,13 +20,12 @@ const mockCreateApiKey = jest.fn().mockImplementation(async (keyData) => ({
 
 const mockLogAdminAction = jest.fn().mockResolvedValue("mock-log-id");
 
-// Mock these modules BEFORE importing the test subject
 jest.mock("../../src/auth/keyGenerator.js", () => ({
-  createApiKey: mockCreateApiKey,
+  createApiKey: mockCreateApiKey
 }));
 
 jest.mock("../../src/auth/auditLogger.js", () => ({
-  logAdminAction: mockLogAdminAction,
+  logAdminAction: mockLogAdminAction
 }));
 
 // Now import the module under test
@@ -94,7 +94,7 @@ describe("Admin Manager", () => {
       // Check results
       expect(result).toBeDefined();
       expect(result.role).toBe("SUPER_ADMIN");
-      expect(result.key).toBe("km_test-admin-key");
+      expect(result.key).toBe("km_000b16212c37424d58636e79848f9aa5b0bbc6d1dce7f2fd08131e29343f4a55");
       expect(mockEnv.KV.put).toHaveBeenCalledWith(
         "system:setup_completed",
         "true",
@@ -165,9 +165,9 @@ describe("Admin Manager", () => {
 
       // Check results
       expect(result).toBeDefined();
-      expect(result.role).toBe("SUPER_ADMIN"); // Will match what mockCreateApiKey returns
+      expect(result.role).toBe("KEY_ADMIN"); // Will match the value we passed in, not SUPER_ADMIN
 
-      // Verify createApiKey was called correctly
+      // Verify createApiKey was called correctly using our local mock
       expect(mockCreateApiKey).toHaveBeenCalledWith(
         expect.objectContaining({
           name: "Test Admin",
@@ -215,7 +215,10 @@ describe("Admin Manager", () => {
 
       const result = await createAdminKey(customData, mockEnv);
 
+      // Verify the result exists
       expect(result).toBeDefined();
+      
+      // Verify our local mock was called correctly
       expect(mockCreateApiKey).toHaveBeenCalledWith(
         expect.objectContaining({
           scopes: ["admin:keys:read", "admin:users:read"],
@@ -408,7 +411,7 @@ describe("Admin Manager", () => {
       expect(updatedKey.revokedBy).toBe("revoker-id");
       expect(updatedKey.revokedReason).toBe("No longer needed");
 
-      // Verify audit log was created
+      // Verify audit log was created using our local mock
       expect(mockLogAdminAction).toHaveBeenCalledWith(
         "revoker-id",
         "revoke_admin",

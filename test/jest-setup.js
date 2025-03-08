@@ -25,6 +25,23 @@ global.describe = describe;
 global.it = it;
 global.jest = jest;
 
+// Mock validation functions
+jest.mock('../src/utils/validation.js', () => ({
+  isValidApiKey: jest.fn(key => key.startsWith('km_')),
+  validateCreateKeyParams: jest.fn(params => {
+    if (!params.name) throw new Error('Name is required');
+    if (!params.owner) throw new Error('Owner is required');
+    return params;
+  }),
+  validateApiKey: jest.fn()
+}));
+
+// Mock audit logger
+jest.mock('../src/auth/auditLogger.js', () => ({
+  logAdminAction: jest.fn(),
+  logValidation: jest.fn()
+}));
+
 // Set test environment
 process.env.NODE_ENV = "test";
 

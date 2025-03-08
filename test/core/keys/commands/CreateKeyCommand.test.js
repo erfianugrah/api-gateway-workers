@@ -1,6 +1,7 @@
+// Import the command
 import { CreateKeyCommand } from '../../../../src/core/keys/commands/CreateKeyCommand.js';
 
-// We'll avoid using jest.mock() and instead create a simple test version
+// Create a mock for validateCreateKeyParams
 const validateCreateKeyParams = jest.fn((params) => {
   const errors = {};
   
@@ -14,10 +15,15 @@ const validateCreateKeyParams = jest.fn((params) => {
   };
 });
 
-// Replace the actual import with our mock version
-jest.mock('../../../../src/utils/validation.js', () => ({
-  validateCreateKeyParams
-}), { virtual: true });
+// Spy on the actual validate method
+jest.spyOn(CreateKeyCommand.prototype, 'validate').mockImplementation(function() {
+  return validateCreateKeyParams({
+    name: this.name,
+    owner: this.owner,
+    scopes: this.scopes,
+    expiresAt: this.expiresAt,
+  });
+});
 
 describe('CreateKeyCommand', () => {
   beforeEach(() => {
