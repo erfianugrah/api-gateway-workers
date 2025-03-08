@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { KeysController } from "../../../src/api/controllers/KeysController.js";
-import { TestContainer } from "../../utils/TestContainer.js";
-import {
-  createTestAdmin,
-  createTestContext,
-  createTestRequest,
-} from "../../utils/factories.js";
+import { 
+  TestContainer, 
+  createTestAdmin, 
+  createMockContext as createTestContext,
+  createMockRequest as createTestRequest
+} from "../../utils/index.js";
 
 describe("KeysController", () => {
   let container;
@@ -23,15 +23,25 @@ describe("KeysController", () => {
 
   describe("listKeys", () => {
     it("should return a list of keys", async () => {
-      // Mock the key service to return some keys
-      container.resolve("keyService").listKeys.mockResolvedValue({
-        items: [
-          { id: "key1", name: "Key 1" },
-          { id: "key2", name: "Key 2" },
-        ],
-        totalItems: 2,
-        limit: 100,
-        offset: 0,
+      // Fix the keyService mock to work with our test
+      const mockKeyService = {
+        listKeys: jest.fn().mockResolvedValue({
+          items: [
+            { id: "key1", name: "Key 1" },
+            { id: "key2", name: "Key 2" },
+          ],
+          totalItems: 2,
+          limit: 100,
+          offset: 0,
+        })
+      };
+      
+      // Replace the keyService in the controller
+      controller = new KeysController({
+        keyService: mockKeyService,
+        authService: container.resolve("authService"),
+        commandBus: container.resolve("commandBus"),
+        auditLogger: container.resolve("auditLogger"),
       });
 
       // Create test request and context
@@ -47,8 +57,8 @@ describe("KeysController", () => {
       // Check results
       expect(response.status).toBe(200);
 
-      // Parse the response body
-      const body = JSON.parse(response.body);
+      // Parse the response body - use Response.json() method
+      const body = await response.json();
       expect(body).toHaveLength(2);
       expect(body[0].id).toBe("key1");
       expect(body[1].id).toBe("key2");
@@ -59,13 +69,31 @@ describe("KeysController", () => {
       expect(response.headers.get("X-Pagination-Offset")).toBe("0");
 
       // Check that service was called with correct parameters
-      expect(container.resolve("keyService").listKeys).toHaveBeenCalledWith({
+      expect(mockKeyService.listKeys).toHaveBeenCalledWith({
         limit: 100,
         offset: 0,
       });
     });
 
     it("should handle pagination parameters", async () => {
+      // Fix the keyService mock to work with our test
+      const mockKeyService = {
+        listKeys: jest.fn().mockResolvedValue({
+          items: [],
+          totalItems: 0,
+          limit: 10,
+          offset: 20,
+        })
+      };
+      
+      // Replace the keyService in the controller
+      controller = new KeysController({
+        keyService: mockKeyService,
+        authService: container.resolve("authService"),
+        commandBus: container.resolve("commandBus"),
+        auditLogger: container.resolve("auditLogger"),
+      });
+      
       // Create test request with pagination parameters
       const request = createTestRequest({
         url: "http://example.com/keys?limit=10&offset=20",
@@ -78,7 +106,7 @@ describe("KeysController", () => {
       await controller.listKeys(request, context);
 
       // Check that service was called with correct parameters
-      expect(container.resolve("keyService").listKeys).toHaveBeenCalledWith({
+      expect(mockKeyService.listKeys).toHaveBeenCalledWith({
         limit: 10,
         offset: 20,
       });
@@ -95,10 +123,12 @@ describe("KeysController", () => {
 
       const context = createTestContext();
 
-      // Call the controller - should throw ForbiddenError
-      await expect(controller.listKeys(request, context))
-        .rejects
-        .toThrow("You do not have the required permission");
+      // Call the controller - should return 403 Forbidden Response
+      const response = await controller.listKeys(request, context);
+      expect(response.status).toBe(403);
+      
+      const body = await response.json();
+      expect(body.error).toContain("You do not have permission: admin:keys:read");
     });
   });
 
@@ -124,9 +154,11 @@ describe("KeysController", () => {
       expect(response.status).toBe(201);
 
       // Parse the response body
-      const body = JSON.parse(response.body);
+      const body = await response.json();
+      
+      // Check key properties
       expect(body.id).toBe("test-key-id");
-      expect(body.key).toBe("km_test-key");
+      expect(body.key).toBe("km_test-key-0123456789");
       expect(body.name).toBe("New Key");
 
       // Check that command bus was called with correct command
@@ -158,10 +190,12 @@ describe("KeysController", () => {
 
       const context = createTestContext();
 
-      // Call the controller - should throw ForbiddenError
-      await expect(controller.createKey(request, context))
-        .rejects
-        .toThrow("You do not have the required permission");
+      // Call the controller - should return 403 Forbidden Response
+      const response = await controller.createKey(request, context);
+      expect(response.status).toBe(403);
+      
+      const body = await response.json();
+      expect(body.error).toContain("You do not have permission: admin:keys:create");
     });
   });
 });

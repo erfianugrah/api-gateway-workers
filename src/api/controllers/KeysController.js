@@ -1,12 +1,16 @@
 import { BaseController } from "./BaseController.js";
 import { CreateKeyCommand } from "../../core/keys/commands/CreateKeyCommand.js";
 import { RevokeKeyCommand } from "../../core/keys/commands/RevokeKeyCommand.js";
+import { RotateKeyCommand } from "../../core/keys/commands/RotateKeyCommand.js";
+import { ValidateKeyCommand } from "../../core/keys/commands/ValidateKeyCommand.js";
+import { GetKeyCommand } from "../../core/keys/commands/GetKeyCommand.js";
+import { ListKeysCommand } from "../../core/keys/commands/ListKeysCommand.js";
+import { ListKeysWithCursorCommand } from "../../core/keys/commands/ListKeysWithCursorCommand.js";
 import {
   createdResponse,
-  notFoundError,
   successResponse,
 } from "../../utils/response.js";
-import { ForbiddenError, NotFoundError } from "../../core/errors/ApiError.js";
+import { ForbiddenError, NotFoundError, ValidationError } from "../../core/errors/ApiError.js";
 
 /**
  * Controller for API key management endpoints
@@ -47,8 +51,15 @@ export class KeysController extends BaseController {
     const limit = parseInt(url.searchParams.get("limit") || "100");
     const offset = parseInt(url.searchParams.get("offset") || "0");
 
-    // Get paginated keys
-    const result = await this.services.keyService.listKeys({ limit, offset });
+    // Create command
+    const command = new ListKeysCommand({ limit, offset });
+    
+    // Execute the command
+    const result = await this.services.commandBus.execute(command, {
+      adminId: adminInfo.keyId,
+      env: context.env,
+      request,
+    });
 
     // Add pagination headers
     const headers = {
@@ -114,13 +125,18 @@ export class KeysController extends BaseController {
     this.services.authService.requirePermission(adminInfo, "admin:keys:read");
 
     const keyId = context.params.id;
-    const apiKey = await this.services.keyService.getKey(keyId);
+    
+    // Create command
+    const command = new GetKeyCommand({ keyId });
+    
+    // Execute the command
+    const result = await this.services.commandBus.execute(command, {
+      adminId: adminInfo.keyId,
+      env: context.env,
+      request,
+    });
 
-    if (!apiKey) {
-      throw new NotFoundError("API key", keyId);
-    }
-
-    return successResponse(apiKey);
+    return successResponse(result);
   }
 
   /**
@@ -190,8 +206,9 @@ export class KeysController extends BaseController {
     // Extract rotation options
     const { gracePeriodDays, scopes, name, expiresAt } = body;
 
-    // Rotate the key
-    const result = await this.services.keyService.rotateKey(keyId, {
+    // Create command
+    const command = new RotateKeyCommand({
+      keyId,
       gracePeriodDays,
       scopes,
       name,
@@ -199,18 +216,11 @@ export class KeysController extends BaseController {
       rotatedBy: adminInfo.keyId,
     });
 
-    // Log this action
-    await this.services.auditLogger.logAdminAction(
-      adminInfo.keyId,
-      "rotate_key",
-      {
-        keyId,
-        newKeyId: result.newKey?.id,
-        gracePeriodDays,
-      },
-      context.env,
+    // Execute the command
+    const result = await this.services.commandBus.execute(command, {
+      env: context.env,
       request,
-    );
+    });
 
     return successResponse(result);
   }
@@ -234,11 +244,18 @@ export class KeysController extends BaseController {
     const cursor = url.searchParams.get("cursor") || null;
     const includeRotated = url.searchParams.get("includeRotated") === "true";
 
-    // Get paginated keys
-    const result = await this.services.keyService.listKeysWithCursor({
+    // Create command
+    const command = new ListKeysWithCursorCommand({
       limit,
       cursor,
       includeRotated,
+    });
+
+    // Execute the command
+    const result = await this.services.commandBus.execute(command, {
+      adminId: adminInfo.keyId,
+      env: context.env,
+      request,
     });
 
     // Add pagination headers

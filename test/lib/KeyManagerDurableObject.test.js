@@ -1,7 +1,8 @@
 import { describe, expect, it, jest, beforeEach } from '@jest/globals';
 import { KeyManagerDurableObject } from '../../src/lib/KeyManagerDurableObject.js';
 import { ApiKeyManager } from '../../src/models/ApiKeyManager.js';
-import { Router } from '../../src/lib/router.js';
+import { Router } from '../../src/infrastructure/http/Router.js';
+import { RateLimiter } from '../../src/core/security/RateLimiter.js';
 
 // We'll manually mock Router and ApiKeyManager classes
 // instead of using jest.mock which has issues with ES modules

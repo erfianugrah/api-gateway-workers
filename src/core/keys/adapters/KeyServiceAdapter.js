@@ -1,5 +1,5 @@
 import { KeyService } from "../KeyService.js";
-import { NotFoundError } from "../../errors/ApiError.js";
+import { NotFoundError, ValidationError } from "../../errors/ApiError.js";
 
 /**
  * Adapter to make existing ApiKeyManager compatible with KeyService interface

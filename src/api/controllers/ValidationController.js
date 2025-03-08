@@ -2,6 +2,7 @@ import { BaseController } from "./BaseController.js";
 import { errorResponse, successResponse } from "../../utils/response.js";
 import { ValidationError } from "../../core/errors/ApiError.js";
 import { isValidApiKey } from "../../utils/validation.js";
+import { ValidateKeyCommand } from "../../core/keys/commands/ValidateKeyCommand.js";
 
 /**
  * Controller for API key validation endpoints
@@ -58,11 +59,14 @@ export class ValidationController extends BaseController {
 
     const requiredScopes = Array.isArray(body.scopes) ? body.scopes : [];
 
-    // Validate the key
-    const result = await this.services.keyService.validateKey(
+    // Create command
+    const command = new ValidateKeyCommand({
       apiKey,
       requiredScopes,
-    );
+    });
+
+    // Execute the command
+    const result = await this.services.commandBus.execute(command, {});
 
     // Always return 200 OK for validation requests to prevent information leakage
     // The valid field in the response body indicates if validation passed

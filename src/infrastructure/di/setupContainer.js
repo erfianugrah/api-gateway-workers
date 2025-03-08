@@ -8,6 +8,10 @@ import { CreateKeyHandler } from "../../core/keys/handlers/CreateKeyHandler.js";
 import { RevokeKeyHandler } from "../../core/keys/handlers/RevokeKeyHandler.js";
 import { RotateKeyHandler } from "../../core/keys/handlers/RotateKeyHandler.js";
 import { ValidateKeyHandler } from "../../core/keys/handlers/ValidateKeyHandler.js";
+import { GetKeyHandler } from "../../core/keys/handlers/GetKeyHandler.js";
+import { ListKeysHandler } from "../../core/keys/handlers/ListKeysHandler.js";
+import { ListKeysWithCursorHandler } from "../../core/keys/handlers/ListKeysWithCursorHandler.js";
+import { CleanupExpiredKeysHandler } from "../../core/keys/handlers/CleanupExpiredKeysHandler.js";
 import { setupConfig } from "../config/setupConfig.js";
 import { KeysController } from "../../api/controllers/KeysController.js";
 import { ValidationController } from "../../api/controllers/ValidationController.js";
@@ -146,6 +150,30 @@ export function setupContainer(state, env) {
     (c) => new ValidateKeyHandler(c.resolve("keyService")),
   );
 
+  container.register(
+    "getKeyHandler",
+    (c) =>
+      new GetKeyHandler(c.resolve("keyService"), c.resolve("auditLogger")),
+  );
+
+  container.register(
+    "listKeysHandler",
+    (c) =>
+      new ListKeysHandler(c.resolve("keyService"), c.resolve("auditLogger")),
+  );
+
+  container.register(
+    "listKeysWithCursorHandler",
+    (c) =>
+      new ListKeysWithCursorHandler(c.resolve("keyService"), c.resolve("auditLogger")),
+  );
+
+  container.register(
+    "cleanupExpiredKeysHandler",
+    (c) =>
+      new CleanupExpiredKeysHandler(c.resolve("keyService"), c.resolve("auditLogger")),
+  );
+
   // Register command bus
   container.register("commandBus", (c) => {
     return new CommandBus([
@@ -153,6 +181,10 @@ export function setupContainer(state, env) {
       c.resolve("revokeKeyHandler"),
       c.resolve("rotateKeyHandler"),
       c.resolve("validateKeyHandler"),
+      c.resolve("getKeyHandler"),
+      c.resolve("listKeysHandler"),
+      c.resolve("listKeysWithCursorHandler"),
+      c.resolve("cleanupExpiredKeysHandler"),
     ]);
   });
 

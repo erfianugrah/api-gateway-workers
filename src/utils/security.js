@@ -459,6 +459,20 @@ export function getClientIp(request) {
 }
 
 /**
+ * Generate storage ID for rate limiting
+ *
+ * @param {string} clientIp - Client IP address
+ * @param {string} endpoint - API endpoint
+ * @returns {string} Storage ID for rate limiting
+ */
+export function getRateLimitStorageId(clientIp, endpoint) {
+  // Generate a rate limit key based on IP and endpoint
+  // Use basic path normalization to ensure consistent rate limiting
+  const normalizedEndpoint = endpoint.split("/").slice(0, 3).join("/");
+  return `ratelimit:${clientIp}:${normalizedEndpoint}`;
+}
+
+/**
  * Convert a buffer to a hex string
  *
  * @param {Uint8Array} buffer - The buffer to convert

@@ -6,7 +6,7 @@ import { setupConfig } from "./infrastructure/config/setupConfig.js";
 import { ForbiddenError, UnauthorizedError } from "./core/errors/ApiError.js";
 import { preflightResponse, successResponse } from "./utils/response.js";
 import { AuthService } from "./core/auth/AuthService.js";
-import { ApiKeyAdapter } from "./auth/adapters/ApiKeyAdapter.js";
+import { ApiKeyAdapter } from "./core/auth/adapters/ApiKeyAdapter.js";
 import { createApiKey } from "./auth/keyGenerator.js";
 import { logAdminAction } from "./auth/auditLogger.js";
 
