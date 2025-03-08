@@ -13,11 +13,11 @@ flowchart TB
     C --> D[Persistent Storage\nDurable Objects]
     B <--> E[KV Storage]
     
-    style A fill:#f9f9f9,stroke:#333,stroke-width:2px
-    style B fill:#f0f0ff,stroke:#333,stroke-width:2px
-    style C fill:#f0f0ff,stroke:#333,stroke-width:2px
-    style D fill:#e6e6ff,stroke:#333,stroke-width:2px
-    style E fill:#e6e6ff,stroke:#333,stroke-width:2px
+    style A fill:#335566,stroke:#88aacc,stroke-width:2px,color:#ffffff
+    style B fill:#334466,stroke:#88aacc,stroke-width:2px,color:#ffffff
+    style C fill:#334455,stroke:#88aacc,stroke-width:2px,color:#ffffff
+    style D fill:#333366,stroke:#88aacc,stroke-width:2px,color:#ffffff
+    style E fill:#333366,stroke:#88aacc,stroke-width:2px,color:#ffffff
 ```
 
 The updated architecture includes:
@@ -36,12 +36,12 @@ flowchart LR
     C --> E[Audit Logger]
     D --> F[Durable Object]
     
-    style A fill:#f9f9f9,stroke:#333,stroke-width:2px
-    style B fill:#f0f0ff,stroke:#333,stroke-width:2px
-    style C fill:#f0f0ff,stroke:#333,stroke-width:2px
-    style D fill:#e6e6ff,stroke:#333,stroke-width:2px
-    style E fill:#e6e6ff,stroke:#333,stroke-width:2px
-    style F fill:#e6e6ff,stroke:#333,stroke-width:2px
+    style A fill:#335566,stroke:#88aacc,stroke-width:2px,color:#ffffff
+    style B fill:#334466,stroke:#88aacc,stroke-width:2px,color:#ffffff
+    style C fill:#334455,stroke:#88aacc,stroke-width:2px,color:#ffffff
+    style D fill:#333366,stroke:#88aacc,stroke-width:2px,color:#ffffff
+    style E fill:#333366,stroke:#88aacc,stroke-width:2px,color:#ffffff
+    style F fill:#333366,stroke:#88aacc,stroke-width:2px,color:#ffffff
 ```
 
 1. Client sends a request with an admin API key in the X-Api-Key header
@@ -130,11 +130,11 @@ flowchart TB
     A --> D[SUPPORT]
     B --> E[KEY_VIEWER]
     
-    style A fill:#f0f0ff,stroke:#333,stroke-width:2px
-    style B fill:#e6e6ff,stroke:#333,stroke-width:2px
-    style C fill:#e6e6ff,stroke:#333,stroke-width:2px
-    style D fill:#e6e6ff,stroke:#333,stroke-width:2px
-    style E fill:#e6efff,stroke:#333,stroke-width:2px
+    style A fill:#335577,stroke:#88aacc,stroke-width:2px,color:#ffffff
+    style B fill:#334466,stroke:#88aacc,stroke-width:2px,color:#ffffff
+    style C fill:#334466,stroke:#88aacc,stroke-width:2px,color:#ffffff
+    style D fill:#334466,stroke:#88aacc,stroke-width:2px,color:#ffffff
+    style E fill:#333366,stroke:#88aacc,stroke-width:2px,color:#ffffff
 ```
 
 Each role has a defined set of permissions:
@@ -248,9 +248,9 @@ flowchart LR
     A[Old Key\nRotated] -->|Points To| C[Grace Period]
     C -->|After Expiry| B[New Key\nActive]
     
-    style A fill:#ffecec,stroke:#333,stroke-width:2px
-    style B fill:#ecffec,stroke:#333,stroke-width:2px
-    style C fill:#ffffec,stroke:#333,stroke-width:2px
+    style A fill:#663333,stroke:#cc8888,stroke-width:2px,color:#ffffff
+    style B fill:#335533,stroke:#88cc88,stroke-width:2px,color:#ffffff
+    style C fill:#555533,stroke:#cccc88,stroke-width:2px,color:#ffffff
 ```
 
 The API key rotation process:
@@ -301,14 +301,14 @@ flowchart TB
     D -->|Store| G[Storage]
     D -->|Log| H[Audit Log]
     
-    style A fill:#f9f9f9,stroke:#333,stroke-width:2px
-    style B fill:#f0f0ff,stroke:#333,stroke-width:2px
-    style C fill:#f0f0ff,stroke:#333,stroke-width:2px
-    style D fill:#e6e6ff,stroke:#333,stroke-width:2px
-    style E fill:#e6e6ff,stroke:#333,stroke-width:2px
-    style F fill:#e6e6ff,stroke:#333,stroke-width:2px
-    style G fill:#e6e6ff,stroke:#333,stroke-width:2px
-    style H fill:#e6e6ff,stroke:#333,stroke-width:2px
+    style A fill:#335566,stroke:#88aacc,stroke-width:2px,color:#ffffff
+    style B fill:#334466,stroke:#88aacc,stroke-width:2px,color:#ffffff
+    style C fill:#334455,stroke:#88aacc,stroke-width:2px,color:#ffffff
+    style D fill:#333366,stroke:#88aacc,stroke-width:2px,color:#ffffff
+    style E fill:#333366,stroke:#88aacc,stroke-width:2px,color:#ffffff
+    style F fill:#333366,stroke:#88aacc,stroke-width:2px,color:#ffffff
+    style G fill:#333366,stroke:#88aacc,stroke-width:2px,color:#ffffff
+    style H fill:#333366,stroke:#88aacc,stroke-width:2px,color:#ffffff
 ```
 
 1. Client sends a POST request to `/keys` with an admin API key
@@ -333,13 +333,13 @@ flowchart TB
     D --> F[Status & Expiration]
     F --> G[Scope Check]
     
-    style A fill:#f9f9f9,stroke:#333,stroke-width:2px
-    style B fill:#f0f0ff,stroke:#333,stroke-width:2px
-    style C fill:#f0f0ff,stroke:#333,stroke-width:2px
-    style D fill:#e6e6ff,stroke:#333,stroke-width:2px
-    style E fill:#e6e6ff,stroke:#333,stroke-width:2px
-    style F fill:#e6e6ff,stroke:#333,stroke-width:2px
-    style G fill:#e6e6ff,stroke:#333,stroke-width:2px
+    style A fill:#335566,stroke:#88aacc,stroke-width:2px,color:#ffffff
+    style B fill:#334466,stroke:#88aacc,stroke-width:2px,color:#ffffff
+    style C fill:#334455,stroke:#88aacc,stroke-width:2px,color:#ffffff
+    style D fill:#333366,stroke:#88aacc,stroke-width:2px,color:#ffffff
+    style E fill:#333366,stroke:#88aacc,stroke-width:2px,color:#ffffff
+    style F fill:#333366,stroke:#88aacc,stroke-width:2px,color:#ffffff
+    style G fill:#333366,stroke:#88aacc,stroke-width:2px,color:#ffffff
 ```
 
 1. Client sends a POST request to `/validate` with an API key
@@ -363,12 +363,12 @@ flowchart TB
     D --> E[Mark Setup Completed]
     D --> F[Audit Log]
     
-    style A fill:#f9f9f9,stroke:#333,stroke-width:2px
-    style B fill:#f0f0ff,stroke:#333,stroke-width:2px
-    style C fill:#f0f0ff,stroke:#333,stroke-width:2px
-    style D fill:#e6e6ff,stroke:#333,stroke-width:2px
-    style E fill:#e6e6ff,stroke:#333,stroke-width:2px
-    style F fill:#e6e6ff,stroke:#333,stroke-width:2px
+    style A fill:#335566,stroke:#88aacc,stroke-width:2px,color:#ffffff
+    style B fill:#334466,stroke:#88aacc,stroke-width:2px,color:#ffffff
+    style C fill:#334455,stroke:#88aacc,stroke-width:2px,color:#ffffff
+    style D fill:#333366,stroke:#88aacc,stroke-width:2px,color:#ffffff
+    style E fill:#333366,stroke:#88aacc,stroke-width:2px,color:#ffffff
+    style F fill:#333366,stroke:#88aacc,stroke-width:2px,color:#ffffff
 ```
 
 1. Client sends a POST request to `/setup` with admin data
