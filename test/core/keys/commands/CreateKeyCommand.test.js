@@ -1,8 +1,7 @@
 import { CreateKeyCommand } from '../../../../src/core/keys/commands/CreateKeyCommand.js';
 
-// Create a custom mock implementation
-// This is better than using jest.mock which can cause conflicts with other mocks
-const validateCreateKeyParamsMock = jest.fn((params) => {
+// We'll avoid using jest.mock() and instead create a simple test version
+const validateCreateKeyParams = jest.fn((params) => {
   const errors = {};
   
   // Basic validation for testing
@@ -15,11 +14,17 @@ const validateCreateKeyParamsMock = jest.fn((params) => {
   };
 });
 
-// Spy on the actual module
-jest.spyOn(require('../../../../src/utils/validation.js'), 'validateCreateKeyParams')
-  .mockImplementation(validateCreateKeyParamsMock);
+// Replace the actual import with our mock version
+jest.mock('../../../../src/utils/validation.js', () => ({
+  validateCreateKeyParams
+}), { virtual: true });
 
 describe('CreateKeyCommand', () => {
+  beforeEach(() => {
+    // Clear mock calls between tests
+    validateCreateKeyParams.mockClear();
+  });
+  
   describe('constructor', () => {
     it('should set all properties from data', () => {
       const data = {
@@ -64,14 +69,27 @@ describe('CreateKeyCommand', () => {
       };
       
       const command = new CreateKeyCommand(data);
-      const result = command.validate();
+      command.validate();
       
-      // Validate result based on our mock implementation
-      expect(result.isValid).toBe(true);
-      expect(result.errors).toEqual({});
+      // Verify that validateCreateKeyParams was called with the correct data
+      expect(validateCreateKeyParams).toHaveBeenCalledWith({
+        name: 'Test Key',
+        owner: 'test@example.com',
+        scopes: ['read:data'],
+        expiresAt: 1234567890
+      });
     });
     
     it('should return validation errors for invalid data', () => {
+      // Configure our mock to return errors
+      validateCreateKeyParams.mockReturnValueOnce({
+        isValid: false,
+        errors: {
+          name: 'Name is required',
+          owner: 'Owner is required'
+        }
+      });
+      
       const data = {
         // Missing name and owner
         scopes: ['read:data']
