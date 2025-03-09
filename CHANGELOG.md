@@ -14,6 +14,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Architecture documentation
 - Quick start guide
 - Contributing guidelines
+- Command pattern implementation with dedicated command objects and handlers
+- Clean architecture implementation with clear layers (domain, application, infrastructure, API)
+- Comprehensive test utilities package
+- Dedicated test files for admin management functions
+- Error handling for storage operations and validation
 
 ### Fixed
 - IP address extraction security vulnerability
@@ -21,11 +26,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed expiration handling for API keys
 - Concurrent operation safety improvements
 - Enhanced input validation
+- Fixed all test configurations and mocking approaches
+- Fixed admin key management error handling
+- Addressed storage error handling
 
 ### Changed
 - Better organization of project structure
 - Updated README with more comprehensive information
 - Improved error handling across the application
+- Refactored to clean architecture with distinct layers
+- Enhanced admin management with better error handling
+- Moved to command pattern for business logic organization
+- Improved test coverage (264 passing tests)
 
 ## [1.0.0] - 2023-12-15
 

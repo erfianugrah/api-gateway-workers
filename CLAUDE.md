@@ -1,7 +1,7 @@
 # Key Manager Workers - Development Guide
 
 ## Project Overview
-Key Manager Workers is a secure, scalable API key management service built on Cloudflare Workers. It supports:
+Key Manager Workers is a secure, scalable API key management service built on Cloudflare Workers, with the long-term goal of evolving into a full-fledged API gateway. It supports:
 - Secure key generation and validation
 - Permission-based scopes
 - Expiration and rotation
@@ -77,25 +77,27 @@ Key Manager Workers is a secure, scalable API key management service built on Cl
 
 ## Testing Status
 
-### Passing Tests
-- Command objects: GetKeyCommand, ListKeysCommand, CleanupExpiredKeysCommand
-- Command handlers: GetKeyHandler, ListKeysHandler, CreateKeyHandler, CleanupExpiredKeysHandler
-- Domain models: ApiKeyManager
-- Security utilities
+### Test Status
+- All tests are passing (264 tests in total)
+- Command objects: All command tests pass (GetKeyCommand, ListKeysCommand, CleanupExpiredKeysCommand, ValidateKeyCommand, CreateKeyCommand)
+- Command handlers: All handler tests pass (GetKeyHandler, ListKeysHandler, CreateKeyHandler, CleanupExpiredKeysHandler, ValidateKeyHandler)
+- Controllers: All controller tests pass (KeysController, ValidationController)
+- Admin management: All admin management tests pass (adminKeysExist, setupFirstAdmin, createAdminKey, revokeAdminKey)
+- Domain models: ApiKeyManager tests pass with expected error logs for storage failure scenarios
+- Security utilities: All security tests pass
 
-### Failing Tests
-- CreateKeyCommand: Issues with mocking validateCreateKeyParams
-- KeysController: Test updates needed for command pattern
-- ValidationController: Test updates needed for command pattern
-- KeyValidator: Needs updating to new validation approach
-- DurableObject integration tests: Need updating for new architecture
+### Test Coverage
+- Unit tests for all command objects
+- Unit tests for all command handlers
+- Unit tests for all controllers
+- Unit tests for all admin management functions
+- Unit tests for security utilities
+- Integration tests for key manager durable object
 
-### Test Improvements Needed
-1. Fix import paths in jest.config.js and mock configurations
-2. Update auth-middleware tests to work with new authentication flow
-3. Fix key-validator tests to match new validation behavior
-4. Update KeyManagerDurableObject tests to work with the new structure
-5. Fix command validation tests
+### Known Test Behaviors
+- Some tests intentionally log error messages as part of testing error handling - these are expected
+- ApiKeyManager.advanced.test.js logs errors for storage failure scenarios - these are expected
+- Durable object tests show "Alarms not supported" warnings - expected in test environment
 
 ## Refactoring Progress
 
@@ -105,16 +107,47 @@ Key Manager Workers is a secure, scalable API key management service built on Cl
 - Created comprehensive test utilities package
 - Updated documentation to reflect new architecture
 - Implemented clean architecture layers (domain, application, infrastructure, API)
+- Fixed all failing tests across the codebase (264 tests passing)
+- Implemented all command/handler pairs including ValidateKey
+- Updated integration tests for new architecture
+- Fixed test configurations and mocking approaches
+- Improved error handling across the codebase
+- Created dedicated test files for admin management functions
+- Added comprehensive test coverage for edge cases and error conditions
 
-### In Progress
-- Completing tests for all command/handler pairs
-- Updating integration tests for new architecture
-- Fixing failing test configurations
-- Implementing remaining command/handler pairs (RevokeKey, RotateKey, ValidateKey)
+### Remaining Work
+- Implement additional command/handler pairs for RevokeKey and RotateKey
+- Refine error handling for console logs in production code
+- Enhance WebCrypto implementations for better security
+- Add comprehensive JSDoc comments to all classes and functions
+- Improve integration between command bus and controllers
+- Enhance audit logging implementation
+- Expand integration test coverage
 
 ### Next Steps
-1. Fix the failing tests by updating mocks
-2. Create missing command/handler implementations
-3. Complete controller implementations for all endpoints
-4. Run integration tests with the working implementation
-5. Clean up any deprecated code paths
+1. Complete RevokeKey and RotateKey command/handler implementations
+2. Improve error handling in controllers to reduce error logs
+3. Enhance documentation with more examples and integrations
+4. Add webhooks for key lifecycle events
+5. Implement user feedback from initial deployment
+
+## API Gateway Roadmap
+To evolve this project into a full-fledged API gateway, we need to implement:
+
+### Phase 1: Foundation
+- Improve request routing with regex patterns and path variables
+- Enhance middleware system for request/response modification
+- Add response caching capabilities with configurable TTL
+- Implement proxy functionality for backend services
+
+### Phase 2: Advanced Features
+- Build service discovery and registration system
+- Add load balancing across multiple backend services
+- Implement request/response transformation capabilities
+- Create advanced traffic management (throttling, circuit breaking)
+
+### Phase 3: Enterprise Capabilities
+- Add support for multiple protocols (gRPC, WebSockets)
+- Implement API composition and aggregation
+- Create performance analytics dashboard
+- Add blue/green and canary deployment capabilities

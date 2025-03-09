@@ -25,9 +25,15 @@ export async function isSetupCompleted(env) {
  * @returns {Promise<boolean>} True if admin keys exist
  */
 export async function adminKeysExist(env) {
-  // Check if any admin keys exist using the admin index
-  const adminKeys = await env.KV.list({ prefix: "index:admin:" });
-  return adminKeys && adminKeys.keys && adminKeys.keys.length > 0;
+  try {
+    // Check if any admin keys exist using the admin index
+    const adminKeys = await env.KV.list({ prefix: "index:admin:" });
+    return adminKeys && adminKeys.keys && adminKeys.keys.length > 0;
+  } catch (error) {
+    // Handle storage errors gracefully
+    console.error("Error checking for admin keys:", error);
+    return false;
+  }
 }
 
 /**

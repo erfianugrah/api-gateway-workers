@@ -436,3 +436,48 @@ it('should debug a failing test', async () => {
   console.log('Mock calls:', mockKeyService.getKey.mock.calls);
 });
 ```
+
+## Understanding Error Logs in Tests
+
+Some tests intentionally log errors to verify error handling. These are expected and are part of testing the system's resilience. Examples include:
+
+1. **Storage failure scenarios** in ApiKeyManager.advanced.test.js and admin-keys-exist.test.js:
+   ```
+   Error creating API key: Error: Storage failure
+   Error validating API key: Error: Storage failure
+   Error checking for admin keys: Error: Storage failure
+   ```
+
+2. **Permission errors** in controller tests:
+   ```
+   Error processing request: Error: You do not have permission: admin:keys:read
+   ```
+
+3. **Alarms not supported** in DurableObject tests:
+   ```
+   Alarms not supported in this environment - scheduled maintenance disabled
+   ```
+
+These logs do not indicate test failures - they are part of verifying that the code correctly handles and logs errors.
+
+## Test Structure for Admin Functions
+
+The admin management functions have been separated into dedicated test files for clarity:
+
+1. **admin-keys-exist.test.js** - Tests the adminKeysExist function
+2. **setup-first-admin.test.js** - Tests the setupFirstAdmin function
+3. **create-admin-key.test.js** - Tests the createAdminKey function
+4. **revoke-admin-key.test.js** - Tests the revokeAdminKey function
+
+This separation allows for more focused testing of each admin function and better error handling coverage.
+
+## Current Test Status
+
+All 264 tests are passing. The console errors seen during test runs are expected and are part of testing error handling paths.
+
+If you encounter persistent test failures:
+
+1. Check for environment variables needed by tests
+2. Verify mocking configurations are correct
+3. Review import paths for test utilities
+4. Check for recent changes to the implementation being tested

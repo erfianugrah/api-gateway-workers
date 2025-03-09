@@ -1,6 +1,7 @@
 # API Key Manager
+> API key management today, API gateway tomorrow
 
-A secure, scalable Cloudflare Workers service for API key management with role-based access control. This service enables creating, validating, and managing API keys with support for permission scopes, key expiration, usage tracking, and comprehensive audit logging.
+A secure, scalable Cloudflare Workers service for API key management with role-based access control, evolving toward becoming a full-fledged API gateway. This service enables creating, validating, and managing API keys with support for permission scopes, key expiration, usage tracking, and comprehensive audit logging.
 
 ## Features
 
@@ -399,8 +400,31 @@ Detailed documentation is available in the `docs/` folder:
 
 ## Future Enhancements
 
+### Short-term
 - Web-based admin dashboard for key management
 - Enhanced metrics and usage analytics
 - Webhook notifications for key events
 - Multi-region consistency improvements
 - OAuth integration for admin authentication
+
+### API Gateway Roadmap
+
+This project is evolving toward becoming a full-fledged API gateway with the following planned phases:
+
+#### Phase 1: Foundation
+- Improved request routing with regex patterns and path variables
+- Enhanced middleware system for request/response modification
+- Response caching capabilities with configurable TTL
+- Proxy functionality for backend services
+
+#### Phase 2: Advanced Features
+- Service discovery and registration system
+- Load balancing across multiple backend services
+- Request/response transformation capabilities
+- Advanced traffic management (throttling, circuit breaking)
+
+#### Phase 3: Enterprise Capabilities
+- Support for multiple protocols (gRPC, WebSockets)
+- API composition and aggregation
+- Performance analytics dashboard
+- Blue/green and canary deployment capabilities
