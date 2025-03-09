@@ -1,6 +1,7 @@
 # API Key Manager
+> API key management today, API gateway tomorrow
 
-A secure, scalable Cloudflare Workers service for API key management with role-based access control. This service enables creating, validating, and managing API keys with support for permission scopes, key expiration, usage tracking, and comprehensive audit logging.
+A secure, scalable Cloudflare Workers service for API key management with role-based access control, evolving toward becoming a full-fledged API gateway. This service enables creating, validating, and managing API keys with support for permission scopes, key expiration, usage tracking, and comprehensive audit logging.
 
 ## Features
 
@@ -53,35 +54,87 @@ flowchart TB
 
 ### Project Structure
 
+The project follows Clean Architecture principles with distinct layers:
+
 ```
 key-manager-workers/
-├── src/                  # Source code
-│   ├── auth/             # Authentication system
-│   │   ├── adminManager.js  # Admin user management
-│   │   ├── auditLogger.js   # Audit logging
-│   │   ├── index.js         # Auth module exports
-│   │   ├── keyGenerator.js  # Key generation
-│   │   ├── keyValidator.js  # Key validation
-│   │   └── roles.js         # Role definitions
-│   ├── handlers/         # API route handlers
-│   │   ├── keys.js       # Key management endpoints
-│   │   ├── system.js     # System endpoints
-│   │   └── validation.js # Key validation endpoint
-│   ├── lib/              # Core functionality
+├── src/                           # Source code
+│   ├── api/                       # API Layer
+│   │   ├── controllers/           # Request handling and responses
+│   │   │   ├── BaseController.js  # Base controller with common functionality
+│   │   │   ├── KeysController.js  # Key management API
+│   │   │   ├── SystemController.js # System operations
+│   │   │   └── ValidationController.js # Key validation
+│   │   └── middleware/            # HTTP middleware
+│   │       ├── authMiddleware.js  # Authentication middleware
+│   │       ├── corsMiddleware.js  # CORS support
+│   │       ├── errorHandler.js    # Error handling
+│   │       └── responseMiddleware.js # Response formatting
+│   ├── auth/                      # Legacy Authentication system
+│   │   ├── adminManager.js        # Admin user management
+│   │   ├── auditLogger.js         # Audit logging
+│   │   ├── index.js               # Auth module exports
+│   │   ├── keyGenerator.js        # Key generation
+│   │   ├── keyValidator.js        # Key validation
+│   │   └── roles.js               # Role definitions
+│   ├── core/                      # Domain and Application Layers
+│   │   ├── audit/                 # Audit functionality
+│   │   │   └── AuditLogger.js     # Audit logging service
+│   │   ├── auth/                  # Authentication domain
+│   │   │   ├── AuthService.js     # Auth service
+│   │   │   └── adapters/          # Auth adapters
+│   │   ├── command/               # Command pattern implementation
+│   │   │   ├── Command.js         # Base command
+│   │   │   ├── CommandBus.js      # Command dispatcher
+│   │   │   └── CommandHandler.js  # Base handler
+│   │   ├── errors/                # Domain errors
+│   │   │   └── ApiError.js        # Error classes
+│   │   ├── keys/                  # Key management domain
+│   │   │   ├── KeyRepository.js   # Repository interface
+│   │   │   ├── KeyService.js      # Domain service
+│   │   │   ├── adapters/          # Repository adapters
+│   │   │   ├── commands/          # Command objects
+│   │   │   └── handlers/          # Command handlers
+│   │   └── security/              # Security services
+│   │       ├── EncryptionService.js # Encryption
+│   │       ├── HmacService.js     # HMAC signatures
+│   │       ├── KeyGenerator.js    # Secure key generation
+│   │       └── RateLimiter.js     # Rate limiting
+│   ├── infrastructure/            # Infrastructure Layer
+│   │   ├── config/                # Configuration
+│   │   │   ├── Config.js          # Config service
+│   │   │   └── setupConfig.js     # Config initialization
+│   │   ├── di/                    # Dependency Injection
+│   │   │   ├── Container.js       # IoC container
+│   │   │   └── setupContainer.js  # Service registration
+│   │   ├── http/                  # HTTP infrastructure
+│   │   │   └── Router.js          # HTTP router
+│   │   └── storage/               # Storage implementations
+│   │       └── DurableObjectRepository.js # DO storage
+│   ├── lib/                       # Integration Layer
 │   │   ├── KeyManagerDurableObject.js # Main Durable Object
-│   │   └── router.js     # HTTP router implementation
-│   ├── models/           # Business logic and data models
-│   │   ├── ApiKeyManager.js # Key management operations
-│   │   └── types.js      # Type definitions
-│   ├── utils/            # Utility functions
-│   │   ├── response.js   # HTTP response formatting
-│   │   ├── security.js   # Security utilities
-│   │   ├── storage.js    # Storage key generation
-│   │   └── validation.js # Input validation
-│   └── index.js          # Entry point
-├── test/                 # Test suite
-├── docs/                 # Documentation
-└── wrangler.jsonc        # Cloudflare Workers configuration
+│   │   └── router.js              # Legacy router
+│   ├── models/                    # Legacy business models
+│   │   ├── ApiKeyManager.js       # Key management
+│   │   └── types.js               # Type definitions
+│   ├── utils/                     # Utility functions
+│   │   ├── response.js            # HTTP response formatting
+│   │   ├── security.js            # Security utilities
+│   │   ├── storage.js             # Storage key generation
+│   │   └── validation.js          # Input validation
+│   └── index.js                   # Entry point
+├── test/                          # Test suite
+│   ├── utils/                     # Test utilities
+│   │   ├── index.js               # Main utilities export
+│   │   ├── TestContainer.js       # Test DI container
+│   │   ├── factories.js           # Test data factories
+│   │   └── mocks/                 # Mock implementations
+│   │       ├── storage.js         # Storage mocks
+│   │       ├── services.js        # Service mocks
+│   │       ├── http.js            # HTTP mocks
+│   │       └── cloudflare.js      # Cloudflare mocks
+├── docs/                          # Documentation
+└── wrangler.jsonc                 # Cloudflare Workers configuration
 ```
 
 ## Role-Based Access Control
@@ -273,6 +326,17 @@ Save the returned API key securely - it will only be shown once!
 
 This project includes comprehensive unit tests, advanced security tests, and integration tests.
 
+### Test Utilities Package
+
+The project provides a comprehensive test utilities package that simplifies writing tests by providing:
+
+- **TestContainer**: Dependency injection container with pre-configured mocks
+- **Mock Factories**: Easy creation of mock objects for services, storage, HTTP, etc.
+- **Test Environment Setup**: Utilities for mocking time, crypto, and other environment aspects
+- **Test Data Factories**: Generate test data consistently across tests
+
+For more details, see the [test utilities documentation](./test/utils/README.md).
+
 ### Unit Tests
 
 Run all unit tests:
@@ -336,8 +400,31 @@ Detailed documentation is available in the `docs/` folder:
 
 ## Future Enhancements
 
+### Short-term
 - Web-based admin dashboard for key management
 - Enhanced metrics and usage analytics
 - Webhook notifications for key events
 - Multi-region consistency improvements
 - OAuth integration for admin authentication
+
+### API Gateway Roadmap
+
+This project is evolving toward becoming a full-fledged API gateway with the following planned phases:
+
+#### Phase 1: Foundation
+- Improved request routing with regex patterns and path variables
+- Enhanced middleware system for request/response modification
+- Response caching capabilities with configurable TTL
+- Proxy functionality for backend services
+
+#### Phase 2: Advanced Features
+- Service discovery and registration system
+- Load balancing across multiple backend services
+- Request/response transformation capabilities
+- Advanced traffic management (throttling, circuit breaking)
+
+#### Phase 3: Enterprise Capabilities
+- Support for multiple protocols (gRPC, WebSockets)
+- API composition and aggregation
+- Performance analytics dashboard
+- Blue/green and canary deployment capabilities

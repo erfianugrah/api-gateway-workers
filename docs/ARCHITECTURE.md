@@ -52,6 +52,20 @@ flowchart LR
 
 ## Key Components
 
+The system follows Clean Architecture principles with distinct layers:
+
+```mermaid
+flowchart TB
+    A["API Layer<br>(Controllers)"] --> B["Application Layer<br>(Command Handlers)"]
+    B --> C["Domain Layer<br>(Core Services)"]
+    C --> D["Infrastructure Layer<br>(Storage, Config)"]
+    
+    style A fill:#335566,stroke:#88aacc,stroke-width:2px,color:#ffffff
+    style B fill:#334466,stroke:#88aacc,stroke-width:2px,color:#ffffff
+    style C fill:#334455,stroke:#88aacc,stroke-width:2px,color:#ffffff
+    style D fill:#333366,stroke:#88aacc,stroke-width:2px,color:#ffffff
+```
+
 ### 1. Worker Entry Point (`index.js`)
 
 The main Worker script acts as the entry point, handling incoming HTTP requests and routing them to the appropriate Durable Object.
@@ -64,9 +78,80 @@ Major responsibilities:
 - Global error handling
 - CORS configuration and handling
 
-### 2. Authentication Module (`auth/` directory)
+### 2. API Layer (`api/` directory)
 
-The new authentication module provides role-based access control:
+The API layer handles HTTP requests and responses:
+
+#### Controllers
+
+- `api/controllers/BaseController.js` - Base controller with common functionality
+- `api/controllers/KeysController.js` - Manages API key operations
+- `api/controllers/SystemController.js` - Handles system-level operations
+- `api/controllers/ValidationController.js` - Validates API keys
+
+#### Middleware
+
+- `api/middleware/authMiddleware.js` - Authentication and authorization
+- `api/middleware/corsMiddleware.js` - CORS support
+- `api/middleware/errorHandler.js` - Error handling and formatting
+- `api/middleware/responseMiddleware.js` - Response formatting
+
+### 3. Application Layer (`core/*/handlers/` directories)
+
+The application layer implements use cases through command handlers:
+
+- `core/keys/handlers/CreateKeyHandler.js` - Creates new API keys
+- `core/keys/handlers/RevokeKeyHandler.js` - Revokes existing keys
+- `core/keys/handlers/RotateKeyHandler.js` - Rotates keys with grace periods
+- `core/keys/handlers/ValidateKeyHandler.js` - Validates keys and scopes
+- `core/keys/handlers/ListKeysHandler.js` - Lists keys with pagination
+- `core/keys/handlers/GetKeyHandler.js` - Retrieves key details
+- `core/keys/handlers/CleanupExpiredKeysHandler.js` - Cleans up expired keys
+
+### 4. Domain Layer (`core/` directory)
+
+The domain layer contains the business logic and domain entities:
+
+#### Command Objects
+
+- `core/command/Command.js` - Base command class
+- `core/command/CommandBus.js` - Command dispatching
+- `core/command/CommandHandler.js` - Base handler interface
+- `core/keys/commands/*.js` - Command objects for key operations
+
+#### Domain Services
+
+- `core/keys/KeyService.js` - Domain service for key operations
+- `core/keys/KeyRepository.js` - Repository interface
+- `core/auth/AuthService.js` - Authentication and authorization
+- `core/security/*.js` - Encryption, HMAC, key generation
+- `core/audit/AuditLogger.js` - Audit logging service
+
+### 5. Infrastructure Layer
+
+The infrastructure layer provides technical capabilities:
+
+#### Storage
+
+- `infrastructure/storage/DurableObjectRepository.js` - Durable Objects storage implementation
+
+#### Configuration
+
+- `infrastructure/config/Config.js` - Configuration management
+- `infrastructure/config/setupConfig.js` - Environment configuration
+
+#### Dependency Injection
+
+- `infrastructure/di/Container.js` - IoC container
+- `infrastructure/di/setupContainer.js` - Service registration
+
+#### HTTP
+
+- `infrastructure/http/Router.js` - HTTP request routing
+
+### 6. Legacy Auth Module (`auth/` directory)
+
+The legacy authentication module provides role-based access control:
 
 - `auth/index.js` - Main authentication exports and middleware
 - `auth/roles.js` - Role definitions and permission checking
@@ -75,40 +160,18 @@ The new authentication module provides role-based access control:
 - `auth/adminManager.js` - Admin user management
 - `auth/auditLogger.js` - Comprehensive audit logging
 
-### 3. Key Manager Durable Object (`lib/KeyManagerDurableObject.js`)
+### 7. Key Manager Durable Object (`lib/KeyManagerDurableObject.js`)
 
 The core Durable Object that provides the API key management functionality with persistent state.
 
 Key responsibilities:
 - Manages internal routing via the Router
-- Handles all key management operations
 - Provides data persistence via Durable Object storage
 - Runs periodic maintenance via Durable Object alarms
 - Integrates with the authentication system
+- Uses the dependency injection container to resolve services
 
-### 4. API Key Manager (`models/ApiKeyManager.js`)
-
-Business logic class that encapsulates API key management operations.
-
-Key responsibilities:
-- Creates new API keys with secure random values
-- Validates API keys and their scopes
-- Manages key revocation and expiration
-- Handles key lookups and listing
-- Supports key rotation with grace periods
-- Cleans up expired keys and stale data
-
-### 5. Router (`lib/router.js`)
-
-HTTP router for handling API endpoints within the Durable Object.
-
-Key responsibilities:
-- Routes requests to the appropriate handler
-- Extracts path parameters
-- Provides middleware support
-- Handles method not allowed errors
-
-### 6. Utility Modules
+### 8. Utility Modules
 
 Several utility modules provide supporting functionality:
 

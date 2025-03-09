@@ -201,3 +201,6 @@ test-results/
 junit.xml
 coverage/
 .nyc_output/
+
+# Claude
+CLAUDE.md
