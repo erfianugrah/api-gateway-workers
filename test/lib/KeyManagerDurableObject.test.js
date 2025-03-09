@@ -46,6 +46,22 @@ describe('KeyManagerDurableObject', () => {
         // This is needed to make the router.add() chaining work in tests
         return this;
       }),
+      addRegex: jest.fn().mockImplementation(function() {
+        // This is needed to make the router.addRegex() chaining work in tests
+        return this;
+      }),
+      addValidated: jest.fn().mockImplementation(function() {
+        // This is needed to make the router.addValidated() chaining work in tests
+        return this;
+      }),
+      addVersioned: jest.fn().mockImplementation(function() {
+        // This is needed to make the router.addVersioned() chaining work in tests
+        return this;
+      }),
+      addVersionedValidated: jest.fn().mockImplementation(function() {
+        // This is needed to make the router.addVersionedValidated() chaining work in tests
+        return this;
+      }),
       handle: jest.fn().mockResolvedValue(new Response('test'))
     };
     

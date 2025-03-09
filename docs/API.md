@@ -1,4 +1,13 @@
-# API Key Manager API Documentation
+# API Key Manager & Gateway API Documentation
+
+## Overview
+
+The service provides dual functionality:
+
+1. **API Key Management**: Secure generation, validation, and management of API keys
+2. **API Gateway**: Routing, proxying, and transformation of API requests
+
+For detailed information about the gateway capabilities, see [GATEWAY.md](./GATEWAY.md).
 
 ## Base URL
 

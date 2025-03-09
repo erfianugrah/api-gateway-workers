@@ -21,6 +21,7 @@ import { HmacService } from "../../core/security/HmacService.js";
 import { KeyGenerator } from "../../core/security/KeyGenerator.js";
 import { RateLimiter } from "../../core/security/RateLimiter.js";
 import { AuditLogger } from "../../core/audit/AuditLogger.js";
+import { ProxyService } from "../../core/proxy/ProxyService.js";
 import { createCorsMiddleware } from "../../api/middleware/corsMiddleware.js";
 import { createResponseMiddleware } from "../../api/middleware/responseMiddleware.js";
 
@@ -84,6 +85,11 @@ export function setupContainer(state, env) {
 
   // Register audit logger
   container.register("auditLogger", () => new AuditLogger(state.storage));
+  
+  // Register proxy service
+  container.register("proxyService", (c) => {
+    return new ProxyService(c.resolve("config"));
+  });
 
   // Register auth service
   container.register("authService", (c) => {

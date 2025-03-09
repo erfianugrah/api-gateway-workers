@@ -1,6 +1,6 @@
 # Key Manager Workers Implementation
 
-This document describes the implementation details of the key manager service, including architecture, patterns, and security features.
+This document describes the implementation details of the key manager service and API gateway, including architecture, patterns, security features, and routing capabilities.
 
 ## Clean Architecture Implementation
 
@@ -19,7 +19,8 @@ The codebase follows Clean Architecture principles, organized into layers:
 3. **Infrastructure Layer (`src/infrastructure/`)**: 
    - Implements repository interfaces
    - Manages configuration and dependency injection
-   - Handles HTTP routing and request/response
+   - Handles enhanced HTTP routing with regex support
+   - Provides proxy capabilities for API gateway functionality
 
 4. **API Layer (`src/api/`)**: 
    - Implements controllers for HTTP endpoints
@@ -161,10 +162,26 @@ The CommandBus:
 
 ## Configuration
 
+### Core Configuration Variables
+
 The following environment variables should be set:
 
 - `ENCRYPTION_KEY`: Secret key for encrypting API keys at rest
 - `HMAC_SECRET`: Secret for generating HMAC signatures
+
+### API Gateway Configuration Variables
+
+For the API gateway functionality, these additional variables can be set:
+
+- `ROUTING_API_VERSIONING_ENABLED`: Enable/disable API versioning (default: true)
+- `API_VERSION_CURRENT`: Current API version (default: "1")
+- `API_VERSIONS_SUPPORTED`: Comma-separated list of supported versions (default: "1")
+- `API_VERSIONS_DEPRECATED`: Comma-separated list of deprecated versions
+- `PROXY_ENABLED`: Enable/disable proxy functionality (default: false)
+- `PROXY_TIMEOUT`: Default timeout in milliseconds for proxied requests (default: 30000)
+- `PROXY_RETRY_ENABLED`: Enable/disable retry mechanism (default: true)
+- `PROXY_RETRY_MAX_ATTEMPTS`: Maximum retry attempts (default: 3)
+- `PROXY_CIRCUIT_BREAKER_ENABLED`: Enable/disable circuit breaker (default: true)
 
 ## Testing Implementation
 
@@ -193,6 +210,77 @@ Tests mirror the source code structure:
 - Controller tests verify HTTP handling
 - Integration tests verify complete workflows
 
+## API Gateway Features
+
+### Enhanced Routing
+
+1. **Regex Pattern Matching**:
+   - Router supports three types of routes in order of priority:
+     - Exact path matching (highest priority)
+     - Path parameter matching (medium priority)
+     - Regex pattern matching (lowest priority)
+   - Provides fine-grained control over URL pattern matching
+
+2. **Parameter Validation**:
+   - Validates path parameters against predefined patterns
+   - Supports patterns for common types like UUID, dates, etc.
+   - Provides early validation before handler execution
+
+3. **API Versioning**:
+   - Configuration-driven API version management
+   - Automatic route generation for supported versions
+   - Version header support and response metadata
+   - Deprecation capabilities for older versions
+
+### Proxy Capabilities
+
+1. **Request Forwarding**:
+   - Forwards requests to upstream services
+   - Handles all HTTP methods (GET, POST, PUT, DELETE, etc.)
+   - Preserves headers and request bodies
+   - Supports customizable timeouts
+
+2. **Path Rewriting**:
+   - Transforms request paths before forwarding
+   - Supports prefix stripping for clean URLs
+   - Pattern-based rewriting with regex support
+   - Service-specific rewrite rules
+
+3. **Fault Tolerance**:
+   - Circuit breaker pattern prevents cascading failures
+   - Configurable retry mechanism with backoff
+   - Timeout management with request cancellation
+   - Error handling and failure tracking
+
+### Configuration
+
+The API Gateway functionality uses centralized configuration:
+
+```javascript
+// Routing configuration
+routing: {
+  versioning: {
+    enabled: true,
+    current: "1",
+    supported: ["1"],
+    deprecated: []
+  },
+  paramValidation: {
+    id: "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
+    date: "\\d{4}-\\d{2}-\\d{2}"
+  }
+}
+
+// Proxy configuration
+proxy: {
+  enabled: true,
+  timeout: 30000,
+  services: {
+    // Service definitions
+  }
+}
+```
+
 ## Future Improvements
 
 1. Add full key material rotation (re-encrypt all keys)
@@ -201,3 +289,7 @@ Tests mirror the source code structure:
 4. Improve caching for frequently validated keys
 5. Implement event sourcing for audit trails
 6. Add bulk operations for key management
+7. Enhance proxy with service discovery mechanisms
+8. Implement load balancing for upstream services
+9. Add request/response transformations
+10. Support multiple protocols (gRPC, WebSockets)

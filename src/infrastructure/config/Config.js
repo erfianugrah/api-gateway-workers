@@ -46,6 +46,54 @@ export class Config {
         cleanupIntervalHours: 24,
         retryIntervalHours: 1,
       },
+      routing: {
+        // API versioning configuration
+        versioning: {
+          enabled: true,
+          current: "1",
+          supported: ["1"],
+          deprecated: [],
+          versionHeader: "X-API-Version"
+        },
+        // Path parameter validation patterns
+        paramValidation: {
+          id: "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}", // UUID format
+          date: "\\d{4}-\\d{2}-\\d{2}", // YYYY-MM-DD format
+          status: "(active|revoked|expired)" // Valid status values
+        },
+        // Route priority (lower number = higher priority)
+        priority: {
+          exact: 1,
+          parameter: 2,
+          regex: 3
+        }
+      },
+      proxy: {
+        // Master switch for proxy functionality
+        enabled: false,
+        // Default timeout for proxied requests (ms)
+        timeout: 30000,
+        // Default headers to add to proxied requests
+        headers: {
+          "X-Forwarded-By": "key-manager-gateway"
+        },
+        // Circuit breaker configuration
+        circuitBreaker: {
+          enabled: true,
+          failureThreshold: 5,
+          resetTimeout: 30000
+        },
+        // Retry configuration
+        retry: {
+          enabled: true,
+          maxAttempts: 3,
+          backoff: 1000 // Initial backoff in ms (doubles with each retry)
+        },
+        // Upstream services configuration
+        services: {
+          // No services defined by default
+        }
+      },
     };
 
     // Override with environment values
@@ -76,6 +124,49 @@ export class Config {
       this.values.maintenance.cleanupIntervalHours = parseInt(
         env.MAINTENANCE_INTERVAL_HOURS,
       );
+    }
+    
+    // API versioning overrides
+    if (env.API_VERSION_CURRENT) {
+      this.values.routing.versioning.current = env.API_VERSION_CURRENT;
+    }
+    
+    if (env.API_VERSIONS_SUPPORTED) {
+      this.values.routing.versioning.supported = env.API_VERSIONS_SUPPORTED.split(',').map(v => v.trim());
+    }
+    
+    if (env.API_VERSIONS_DEPRECATED) {
+      this.values.routing.versioning.deprecated = env.API_VERSIONS_DEPRECATED.split(',').map(v => v.trim());
+    }
+    
+    if (env.API_VERSION_HEADER) {
+      this.values.routing.versioning.versionHeader = env.API_VERSION_HEADER;
+    }
+    
+    // Route pattern overrides
+    if (env.ROUTING_API_VERSIONING_ENABLED !== undefined) {
+      this.values.routing.versioning.enabled = env.ROUTING_API_VERSIONING_ENABLED === 'true';
+    }
+    
+    // Proxy configuration overrides
+    if (env.PROXY_ENABLED !== undefined) {
+      this.values.proxy.enabled = env.PROXY_ENABLED === 'true';
+    }
+    
+    if (env.PROXY_TIMEOUT) {
+      this.values.proxy.timeout = parseInt(env.PROXY_TIMEOUT);
+    }
+    
+    if (env.PROXY_RETRY_ENABLED !== undefined) {
+      this.values.proxy.retry.enabled = env.PROXY_RETRY_ENABLED === 'true';
+    }
+    
+    if (env.PROXY_RETRY_MAX_ATTEMPTS) {
+      this.values.proxy.retry.maxAttempts = parseInt(env.PROXY_RETRY_MAX_ATTEMPTS);
+    }
+    
+    if (env.PROXY_CIRCUIT_BREAKER_ENABLED !== undefined) {
+      this.values.proxy.circuitBreaker.enabled = env.PROXY_CIRCUIT_BREAKER_ENABLED === 'true';
     }
   }
 
@@ -134,5 +225,79 @@ export class Config {
   isProduction() {
     return this.get("env") === "production" ||
       process.env.NODE_ENV === "production";
+  }
+
+  /**
+   * Get a regex pattern from parameter validation configuration
+   *
+   * @param {string} paramType - Type of parameter (id, date, status, etc.)
+   * @returns {RegExp|null} Compiled regex pattern or null if not found
+   */
+  getRegexPattern(paramType) {
+    const pattern = this.get(`routing.paramValidation.${paramType}`);
+    if (!pattern) return null;
+    return new RegExp(`^${pattern}$`);
+  }
+  
+  /**
+   * Get API version information
+   *
+   * @returns {Object} API version information
+   */
+  getVersionInfo() {
+    return {
+      enabled: this.get('routing.versioning.enabled'),
+      current: this.get('routing.versioning.current'),
+      supported: this.get('routing.versioning.supported'),
+      deprecated: this.get('routing.versioning.deprecated'),
+      versionHeader: this.get('routing.versioning.versionHeader')
+    };
+  }
+  
+  /**
+   * Get proxy configuration
+   * 
+   * @returns {Object} Proxy configuration
+   */
+  getProxyConfig() {
+    return {
+      enabled: this.get('proxy.enabled'),
+      timeout: this.get('proxy.timeout'),
+      headers: this.get('proxy.headers'),
+      circuitBreaker: this.get('proxy.circuitBreaker'),
+      retry: this.get('proxy.retry'),
+      services: this.get('proxy.services')
+    };
+  }
+  
+  /**
+   * Register a proxy service
+   * 
+   * @param {string} name - Service name
+   * @param {Object} config - Service configuration
+   * @param {string} config.target - Target URL (e.g., "https://api.example.com")
+   * @param {Object} [config.pathRewrite] - Path rewrite rules
+   * @param {Object} [config.headers] - Additional headers
+   * @param {number} [config.timeout] - Service-specific timeout
+   * @returns {Config} - This config instance for chaining
+   */
+  registerProxyService(name, config) {
+    if (!name || typeof name !== 'string') {
+      throw new Error('Service name is required');
+    }
+    
+    if (!config || !config.target) {
+      throw new Error('Service target URL is required');
+    }
+    
+    // Initialize services object if it doesn't exist
+    if (!this.values.proxy.services) {
+      this.values.proxy.services = {};
+    }
+    
+    // Store the service configuration
+    this.values.proxy.services[name] = config;
+    
+    return this;
   }
 }
