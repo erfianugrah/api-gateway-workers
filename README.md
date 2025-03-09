@@ -65,7 +65,7 @@ flowchart TB
 The project follows Clean Architecture principles with distinct layers:
 
 ```
-key-manager-workers/
+api-gateway-workers/
 ├── src/                           # Source code
 │   ├── api/                       # API Layer
 │   │   ├── controllers/           # Request handling and responses
@@ -288,6 +288,27 @@ All administrative actions are logged for accountability:
    wrangler secret put ENCRYPTION_KEY
    wrangler secret put HMAC_SECRET
    ```
+
+### Environment Variables
+
+The service uses the following environment variables:
+
+#### Core Configuration Variables
+- `ENCRYPTION_KEY`: Secret key for encrypting API keys at rest
+- `HMAC_SECRET`: Secret for generating HMAC signatures
+
+#### API Gateway Configuration Variables
+- `ROUTING_API_VERSIONING_ENABLED`: Enable/disable API versioning (default: true)
+- `API_VERSION_CURRENT`: Current API version (default: "1")
+- `API_VERSIONS_SUPPORTED`: Comma-separated list of supported versions (default: "1")
+- `API_VERSIONS_DEPRECATED`: Comma-separated list of deprecated versions
+- `API_VERSION_HEADER`: Header for API version (default: "X-API-Version")
+- `PROXY_ENABLED`: Enable/disable proxy functionality (default: false)
+- `PROXY_TIMEOUT`: Default timeout in milliseconds for proxied requests (default: 30000)
+- `PROXY_RETRY_ENABLED`: Enable/disable retry mechanism (default: true)
+- `PROXY_RETRY_MAX_ATTEMPTS`: Maximum retry attempts (default: 3)
+- `PROXY_CIRCUIT_BREAKER_ENABLED`: Enable/disable circuit breaker (default: true)
+- `DEBUG`: Enable detailed logging for debugging (default: false)
 
 ### Deployment Steps
 

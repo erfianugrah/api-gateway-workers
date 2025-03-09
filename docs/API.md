@@ -9,6 +9,63 @@ The service provides dual functionality:
 
 For detailed information about the gateway capabilities, see [GATEWAY.md](./GATEWAY.md).
 
+## API Endpoints Overview
+
+### Key Management Endpoints
+- `POST /keys` - Create new API key
+- `GET /keys` - List keys 
+- `GET /keys/:id` - Get key details
+- `DELETE /keys/:id` - Revoke key
+- `POST /keys/:id/rotate` - Rotate key
+- `GET /keys-cursor` - Cursor-based pagination
+
+### Validation Endpoints
+- `POST /validate` - Validate API key and check scopes
+
+### System Endpoints
+- `GET /health` - Health check
+- `POST /setup` - First-time setup
+- `POST /maintenance/cleanup` - Clean expired keys
+- `POST /maintenance/rotate-keys` - Rotate encryption keys
+- `GET /logs/admin` - View audit logs
+
+### Gateway Proxy Endpoints
+Proxy endpoints are configured dynamically based on service registration. Once configured, the gateway can forward requests to upstream services.
+
+#### Configuring Proxy Endpoints
+
+Proxy services must be registered in the configuration before use:
+
+```javascript
+// Register a proxy service
+config.registerProxyService('userService', {
+  target: 'https://api.example.com/users',
+  pathRewrite: { '^/api/users': '' },
+  headers: { 'X-Service-Key': 'abc123' },
+  timeout: 5000
+});
+
+// Create proxy routes
+router.addProxy('/api/users/*', 'userService', {
+  stripPrefix: '/api/users'
+});
+```
+
+#### Using Proxy Endpoints
+
+Once configured, requests to proxy endpoints are forwarded to the configured upstream service:
+
+```
+GET /api/users/123
+```
+
+This request would be proxied to:
+```
+GET https://api.example.com/users/123
+```
+
+With appropriate headers added and path transformations applied according to configuration.
+
 ## Base URL
 
 When deployed, the base URL will be provided by Cloudflare. For local development, the base URL is:

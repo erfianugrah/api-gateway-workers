@@ -8,8 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- API Gateway functionality with enhanced routing capabilities
+- Regex-based route pattern matching with validation
+- Parameter validation for path segments
+- API versioning support with configuration-driven version management
+- Proxy functionality for forwarding requests to upstream services
+- Circuit breaker pattern for fault tolerance
+- Retry mechanisms with configurable backoff
+- Path rewriting and transformation for proxied requests
+- Header manipulation capabilities for proxied requests
+- Timeout management with request cancellation
+- RevokeKey and RotateKey command/handler implementations
 - Comprehensive documentation in docs/ directory
-- API reference documentation
+- API reference documentation including gateway features
 - Security implementation details
 - Architecture documentation
 - Quick start guide

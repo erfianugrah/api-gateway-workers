@@ -10,6 +10,8 @@ This package provides a collection of utilities for writing tests for the Key Ma
 - [Testing Commands and Handlers](#testing-commands-and-handlers)
 - [Test Environment](#test-environment)
 - [Examples](#examples)
+- [Code Coverage](#code-coverage)
+- [Missing Tests](#missing-tests)
 
 ## Getting Started
 
@@ -364,3 +366,42 @@ describe('Key Management Flow', () => {
   });
 });
 ```
+
+## Code Coverage
+
+The project aims for high test coverage of critical code paths. To generate a code coverage report:
+
+```bash
+npm run test:coverage
+```
+
+The report will show:
+- Line coverage
+- Branch coverage
+- Function coverage
+- Statement coverage
+
+Current test coverage targets:
+- Core domain logic: >90%
+- Command handlers: >90% 
+- Controllers: >85%
+- Infrastructure components: >75%
+
+## Missing Tests
+
+The following components currently need additional test coverage:
+
+1. **Command Handlers**:
+   - RevokeKeyHandler - needs tests for successful revocation and error cases
+   - RotateKeyHandler - needs tests for key rotation with different grace periods
+
+2. **API Gateway Components**:
+   - Additional test coverage for ProxyService features
+   - Tests for advanced circuit breaker scenarios
+   - Tests for API versioning functionality
+
+3. **Integration Tests**:
+   - End-to-end tests for proxy functionality
+   - Integration tests for API gateway with upstream services
+
+These tests are planned for the next development iteration. When adding new tests, please use the utilities provided in this package to maintain consistent testing patterns.
