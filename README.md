@@ -1,5 +1,4 @@
-# API Key Manager
-> API key management today, API gateway tomorrow
+# API Gateway 
 
 A secure, scalable Cloudflare Workers service for API key management with role-based access control, evolving toward becoming a full-fledged API gateway. This service enables creating, validating, and managing API keys with support for permission scopes, key expiration, usage tracking, and comprehensive audit logging.
 
