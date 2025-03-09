@@ -26,6 +26,15 @@ A secure, scalable Cloudflare Workers service for API key management with role-b
 - **Comprehensive Audit Logging**: Track all administrative actions with detailed context
 - **Security Key Rotation**: Support for rotating encryption and HMAC secrets
 
+### API Gateway Features
+- **Enhanced Routing**: Support for regex pattern matching and parameter validation
+- **API Versioning**: Configuration-driven API version management 
+- **Request Proxying**: Forward requests to upstream services with transformation
+- **Path Rewriting**: Transform request paths before forwarding
+- **Header Manipulation**: Add, modify, or remove headers for proxied requests
+- **Fault Tolerance**: Circuit breaker pattern and retry mechanisms
+- **Timeout Management**: Configurable timeouts with request cancellation
+
 ## Architecture
 
 This service uses Cloudflare Workers with Durable Objects and KV storage for:
@@ -388,6 +397,7 @@ npm run test:all
 Detailed documentation is available in the `docs/` folder:
 
 - [API Reference](./docs/API.md) - Detailed API documentation
+- [Gateway Features](./docs/GATEWAY.md) - API Gateway functionality and implementation
 - [Architecture](./docs/ARCHITECTURE.md) - System design and component interaction
 - [Security Implementation](./docs/SECURITY.md) - Security features and considerations
 - [Quick Start Guide](./docs/QUICKSTART.md) - Get up and running quickly
@@ -409,22 +419,24 @@ Detailed documentation is available in the `docs/` folder:
 
 ### API Gateway Roadmap
 
-This project is evolving toward becoming a full-fledged API gateway with the following planned phases:
+This project has already implemented Phase 1 of its evolution into a full-fledged API gateway, with plans for further enhancements:
 
-#### Phase 1: Foundation
-- Improved request routing with regex patterns and path variables
-- Enhanced middleware system for request/response modification
-- Response caching capabilities with configurable TTL
-- Proxy functionality for backend services
+#### Phase 1: Foundation (✅ Implemented)
+- ✅ Improved request routing with regex patterns and path variables
+- ✅ Enhanced path parameter validation
+- ✅ API versioning support
+- ✅ Proxy functionality for backend services with fault tolerance
 
-#### Phase 2: Advanced Features
-- Service discovery and registration system
-- Load balancing across multiple backend services
-- Request/response transformation capabilities
-- Advanced traffic management (throttling, circuit breaking)
+#### Phase 2: Advanced Features (In Progress)
+- ⬜ Service discovery and registration system
+- ⬜ Load balancing across multiple backend services
+- ⬜ Advanced request/response transformation capabilities
+- ⬜ Enhanced traffic management (throttling, circuit breaking)
 
-#### Phase 3: Enterprise Capabilities
-- Support for multiple protocols (gRPC, WebSockets)
-- API composition and aggregation
-- Performance analytics dashboard
-- Blue/green and canary deployment capabilities
+#### Phase 3: Enterprise Capabilities (Planned)
+- ⬜ Support for multiple protocols (gRPC, WebSockets)
+- ⬜ API composition and aggregation
+- ⬜ Performance analytics dashboard
+- ⬜ Blue/green and canary deployment capabilities
+
+For detailed documentation on the gateway features, see [GATEWAY.md](./docs/GATEWAY.md).

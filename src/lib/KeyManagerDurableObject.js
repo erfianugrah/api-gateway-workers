@@ -32,8 +32,8 @@ export class KeyManagerDurableObject {
     this.validationController = this.container.resolve("validationController");
     this.systemController = this.container.resolve("systemController");
 
-    // Initialize router
-    this.router = new Router();
+    // Initialize router with config
+    this.router = new Router(this.config);
 
     // Register routes
     this.setupRoutes();
@@ -75,6 +75,14 @@ export class KeyManagerDurableObject {
       this.keysController.listKeys,
     );
 
+    // API Versioning using config
+    this.router.addVersioned(
+      "GET",
+      "/keys",
+      auth("admin:keys:read"),
+      this.keysController.listKeys,
+    );
+
     this.router.add(
       "POST",
       "/keys",
@@ -82,16 +90,22 @@ export class KeyManagerDurableObject {
       this.keysController.createKey,
     );
 
-    this.router.add(
+    // Enhanced Key ID validation using config patterns
+    this.router.addValidated(
       "GET",
       "/keys/:id",
+      "id",
+      "id",
       auth("admin:keys:read"),
       this.keysController.getKey,
     );
 
-    this.router.add(
+    // Delete key route with validated ID and versioning
+    this.router.addVersionedValidated(
       "DELETE",
       "/keys/:id",
+      "id",
+      "id",
       auth("admin:keys:revoke"),
       this.keysController.revokeKey,
     );
@@ -101,6 +115,16 @@ export class KeyManagerDurableObject {
       "/keys/:id/rotate",
       auth("admin:keys:update"),
       this.keysController.rotateKey,
+    );
+
+    // Add filtering by status with validated parameter
+    this.router.addValidated(
+      "GET",
+      "/keys/filter/status/:status",
+      "status",
+      "status",
+      auth("admin:keys:read"),
+      this.keysController.listKeys,
     );
 
     // Cursor-based pagination
@@ -115,6 +139,16 @@ export class KeyManagerDurableObject {
     this.router.add(
       "GET",
       "/logs/admin",
+      auth("admin:system:logs"),
+      this.systemController.getAdminLogs,
+    );
+    
+    // Log filtering by date with validated parameter
+    this.router.addValidated(
+      "GET",
+      "/logs/admin/:date",
+      "date",
+      "date",
       auth("admin:system:logs"),
       this.systemController.getAdminLogs,
     );
@@ -181,10 +215,11 @@ export class KeyManagerDurableObject {
    */
   async fetch(request) {
     try {
-      // Add rate limiting info if available
+      // Add context for handlers
       const context = {
         storage: this.state.storage,
         env: this.env,
+        proxyService: this.container.resolve("proxyService"),
       };
 
       // If rate limiting is available, apply it

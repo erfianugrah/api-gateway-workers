@@ -4,13 +4,16 @@ This document provides a detailed overview of the API Key Manager's architecture
 
 ## System Architecture
 
-The API Key Manager is built on Cloudflare Workers with Durable Objects, providing a globally distributed, highly available API key management service without a separate database.
+The service is built on Cloudflare Workers with Durable Objects, providing a globally distributed, highly available API key management and gateway service without a separate database.
 
 ```mermaid
 flowchart TB
     A["API Request<br>HTTP/HTTPS"] -->|Request| B["Cloudflare Worker<br>Entry Point"]
     B --> C["Key Manager<br>Durable Object"]
     C --> D["Persistent Storage<br>Durable Objects"]
+    C --> F["Enhanced Router"]
+    F --> G["ProxyService"]
+    G -->|Forward| H["Upstream<br>Services"]
     B <--> E["KV Storage"]
     
     style A fill:#335566,stroke:#88aacc,stroke-width:2px,color:#ffffff
@@ -18,6 +21,9 @@ flowchart TB
     style C fill:#334455,stroke:#88aacc,stroke-width:2px,color:#ffffff
     style D fill:#333366,stroke:#88aacc,stroke-width:2px,color:#ffffff
     style E fill:#333366,stroke:#88aacc,stroke-width:2px,color:#ffffff
+    style F fill:#663333,stroke:#cc8888,stroke-width:2px,color:#ffffff
+    style G fill:#336633,stroke:#88cc88,stroke-width:2px,color:#ffffff
+    style H fill:#336666,stroke:#88cccc,stroke-width:2px,color:#ffffff
 ```
 
 The updated architecture includes:
@@ -25,6 +31,9 @@ The updated architecture includes:
 2. Durable Objects for API key management and storage
 3. Authentication middleware for role-based access control
 4. Background maintenance processes with alarms
+5. Enhanced routing with regex pattern support
+6. Proxy service for forwarding requests to upstream services
+7. Fault tolerance mechanisms like circuit breakers and retry logic
 
 ### Authentication Flow
 
@@ -147,7 +156,11 @@ The infrastructure layer provides technical capabilities:
 
 #### HTTP
 
-- `infrastructure/http/Router.js` - HTTP request routing
+- `infrastructure/http/Router.js` - Enhanced HTTP request routing with regex support, validation, versioning, and proxy capabilities
+
+#### Proxy
+
+- `core/proxy/ProxyService.js` - Handles forwarding requests to upstream services
 
 ### 6. Legacy Auth Module (`auth/` directory)
 

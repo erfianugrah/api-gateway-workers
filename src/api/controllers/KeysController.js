@@ -50,9 +50,26 @@ export class KeysController extends BaseController {
     const url = new URL(request.url);
     const limit = parseInt(url.searchParams.get("limit") || "100");
     const offset = parseInt(url.searchParams.get("offset") || "0");
-
-    // Create command
-    const command = new ListKeysCommand({ limit, offset });
+    
+    // Extract API version if present in path
+    let apiVersion = null;
+    if (context.params && context.params[0] && /^\d+$/.test(context.params[0])) {
+      apiVersion = parseInt(context.params[0]);
+    }
+    
+    // Extract status filter if present
+    let statusFilter = null;
+    if (context.params && context.params[0] && ['active', 'revoked', 'expired'].includes(context.params[0])) {
+      statusFilter = context.params[0];
+    }
+    
+    // Create command with filters
+    const command = new ListKeysCommand({ 
+      limit, 
+      offset,
+      apiVersion,
+      status: statusFilter
+    });
     
     // Execute the command
     const result = await this.services.commandBus.execute(command, {
@@ -67,6 +84,11 @@ export class KeysController extends BaseController {
       "X-Pagination-Limit": result.limit.toString(),
       "X-Pagination-Offset": result.offset.toString(),
     };
+    
+    // Add API version header if applicable
+    if (apiVersion) {
+      headers["X-API-Version"] = apiVersion.toString();
+    }
 
     return successResponse(result.items, { headers });
   }
