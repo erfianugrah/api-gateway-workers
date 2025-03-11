@@ -24,6 +24,8 @@ import { AuditLogger } from "../../core/audit/AuditLogger.js";
 import { ProxyService } from "../../core/proxy/ProxyService.js";
 import { createCorsMiddleware } from "../../api/middleware/corsMiddleware.js";
 import { createResponseMiddleware } from "../../api/middleware/responseMiddleware.js";
+import { createErrorHandler } from "../../api/middleware/errorHandler.js";
+import { Logger } from "../logging/Logger.js";
 
 /**
  * Set up the dependency injection container
@@ -37,6 +39,9 @@ export function setupContainer(state, env) {
 
   // Register configuration
   container.register("config", () => setupConfig(env));
+  
+  // Register logger
+  container.register("logger", (c) => new Logger(c.resolve("config")));
 
   // Register security services
   container.register("encryptionService", (c) => {
@@ -93,6 +98,7 @@ export function setupContainer(state, env) {
 
   // Register auth service
   container.register("authService", (c) => {
+    const config = c.resolve("config");
     return new AuthService(c.resolve("keyService"), {
       hasPermission: (admin, permission) => {
         if (!admin || !admin.scopes) return false;
@@ -129,7 +135,7 @@ export function setupContainer(state, env) {
 
         return false;
       },
-    });
+    }, config);
   });
 
   // Register command handlers
@@ -197,15 +203,20 @@ export function setupContainer(state, env) {
   // Register middleware
   container.register("corsMiddleware", (c) => {
     const config = c.resolve("config");
-    return createCorsMiddleware(config.get("security.cors", {}));
+    return createCorsMiddleware({ config });
   });
 
   container.register("responseMiddleware", (c) => {
     const config = c.resolve("config");
     return createResponseMiddleware({
+      config,
       cors: config.get("security.cors", {}),
       security: config.get("security.headers", {}),
     });
+  });
+  
+  container.register("errorHandler", (c) => {
+    return createErrorHandler(c.resolve("logger"));
   });
 
   // Register controllers
@@ -215,12 +226,14 @@ export function setupContainer(state, env) {
       authService: c.resolve("authService"),
       commandBus: c.resolve("commandBus"),
       auditLogger: c.resolve("auditLogger"),
+      config: c.resolve("config"),
     });
   });
 
   container.register("validationController", (c) => {
     return new ValidationController({
       keyService: c.resolve("keyService"),
+      config: c.resolve("config"),
     });
   });
 
@@ -229,6 +242,7 @@ export function setupContainer(state, env) {
       keyService: c.resolve("keyService"),
       authService: c.resolve("authService"),
       auditLogger: c.resolve("auditLogger"),
+      config: c.resolve("config"),
     });
   });
 

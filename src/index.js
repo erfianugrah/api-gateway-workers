@@ -1,8 +1,9 @@
 import { KeyManagerDurableObject } from "./lib/KeyManagerDurableObject.js";
 import { createAuthMiddleware } from "./api/middleware/authMiddleware.js";
-import { errorHandler } from "./api/middleware/errorHandler.js";
+import { createErrorHandler } from "./api/middleware/errorHandler.js";
 import { setupContainer } from "./infrastructure/di/setupContainer.js";
 import { setupConfig } from "./infrastructure/config/setupConfig.js";
+import { Logger } from "./infrastructure/logging/Logger.js";
 import { ForbiddenError, UnauthorizedError } from "./core/errors/ApiError.js";
 import { preflightResponse, successResponse } from "./utils/response.js";
 import { AuthService } from "./core/auth/AuthService.js";
@@ -24,6 +25,11 @@ export default {
    * @returns {Promise<Response>} HTTP response
    */
   async fetch(request, env, ctx) {
+    // Initialize configuration and logger
+    const config = setupConfig(env);
+    const logger = new Logger(config);
+    const errorHandler = createErrorHandler(logger);
+    
     try {
       // Check required bindings
       if (!env.KEY_MANAGER) {
@@ -52,6 +58,7 @@ export default {
           headers: {
             "Cache-Control": "no-store",
           },
+          config: config
         });
       }
 
@@ -65,7 +72,7 @@ export default {
 
       // Skip authentication for OPTIONS requests (CORS preflight)
       if (request.method === "OPTIONS") {
-        return preflightResponse();
+        return preflightResponse(config);
       }
 
       // Public endpoint that doesn't require authentication
@@ -90,7 +97,7 @@ export default {
       // Any other path not matched
       return errorHandler(new Error("Not Found"), request);
     } catch (error) {
-      console.error("Unhandled worker error:", error);
+      logger.error("Unhandled worker error", { error, path: new URL(request.url).pathname });
       return errorHandler(error, request);
     }
   },
@@ -105,6 +112,10 @@ export default {
  * @returns {Promise<Response>} HTTP response
  */
 async function handleSetup(request, env, config) {
+  // Create logger and error handler for this function
+  const logger = new Logger(config);
+  const errorHandler = createErrorHandler(logger);
+  
   try {
     // Check if setup has already been completed
     const setupCompleted = await env.KV.get("system:setup_completed");
@@ -175,7 +186,7 @@ async function handleSetup(request, env, config) {
         "IMPORTANT: Save this API key securely. It will never be shown again.",
     }, { status: 201 });
   } catch (error) {
-    console.error("Setup error:", error);
+    logger.error("Setup error", { error });
     return errorHandler(error, request);
   }
 }
@@ -189,9 +200,14 @@ async function handleSetup(request, env, config) {
  * @returns {Promise<Response>} HTTP response
  */
 async function handleAdminRequest(request, env, config) {
+  // Create logger and error handler for this function
+  const logger = new Logger(config);
+  const errorHandler = createErrorHandler(logger);
+  
   try {
-    // Extract API key from header
-    const apiKey = request.headers.get("X-Api-Key");
+    // Extract API key from header using configurable header name
+    const apiKeyHeader = config.get('security.apiKeyHeader', 'X-Api-Key');
+    const apiKey = request.headers.get(apiKeyHeader);
 
     // No API key provided
     if (!apiKey) {
@@ -204,8 +220,8 @@ async function handleAdminRequest(request, env, config) {
     // Create key service adapter for validation
     const keyAdapter = new ApiKeyAdapter(env.KV);
 
-    // Create auth service
-    const authService = new AuthService(keyAdapter, { hasPermission });
+    // Create auth service with config
+    const authService = new AuthService(keyAdapter, { hasPermission }, config);
 
     // Validate the API key
     const auth = await authService.authenticate(apiKey);
@@ -234,8 +250,8 @@ async function handleAdminRequest(request, env, config) {
     const id = env.KEY_MANAGER.idFromName("global");
     const keyManager = env.KEY_MANAGER.get(id);
 
-    // Add request timeout
-    const timeoutMs = config.get("requestTimeout", 10000); // 10 seconds default
+    // Add request timeout from configuration
+    const timeoutMs = config.get("proxy.timeout", 30000); // Default to 30 seconds if not configured
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -255,11 +271,11 @@ async function handleAdminRequest(request, env, config) {
         );
       }
 
-      console.error("Error forwarding request:", error);
+      logger.error("Error forwarding request", { error, path: new URL(request.url).pathname });
       return errorHandler(error, request);
     }
   } catch (error) {
-    console.error("Authentication error:", error);
+    logger.error("Authentication error", { error, path: new URL(request.url).pathname });
     return errorHandler(error, request);
   }
 }

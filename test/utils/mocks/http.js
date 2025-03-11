@@ -2,6 +2,7 @@
  * Mock HTTP-related objects for testing
  */
 import { createTestAdmin } from '../factories.js';
+import { jest } from '@jest/globals';
 
 /**
  * Create a mock request

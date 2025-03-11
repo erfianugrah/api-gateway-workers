@@ -2,6 +2,7 @@
  * Test utilities for Key Manager Workers
  */
 import { TestContainer } from './TestContainer.js';
+import { jest } from '@jest/globals';
 
 // Re-export factory functions
 export * from './factories.js';

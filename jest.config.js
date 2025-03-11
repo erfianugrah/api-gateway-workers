@@ -5,7 +5,7 @@ export default {
   coveragePathIgnorePatterns: ['/node_modules/'],
   coverageReporters: ['text', 'lcov'],
   testTimeout: 10000, // Cloudflare Workers tests may take some time
-  setupFilesAfterEnv: ['./test/jest-setup.js'],
+  setupFilesAfterEnv: ['./test/jest-setup-fix.js'],
   transform: {}, // Don't transform files (use ESM)
   moduleNameMapper: {
     "cloudflare:workers": "<rootDir>/test/cloudflare-mock.js",

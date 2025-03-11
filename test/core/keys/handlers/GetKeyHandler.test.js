@@ -2,6 +2,7 @@ import { GetKeyHandler } from '../../../../src/core/keys/handlers/GetKeyHandler.
 import { GetKeyCommand } from '../../../../src/core/keys/commands/GetKeyCommand.js';
 import { NotFoundError } from '../../../../src/core/errors/ApiError.js';
 import { createMockKeyService, createMockAuditLogger } from '../../../utils/index.js';
+import { jest, describe, it, expect, beforeEach } from '@jest/globals';
 
 describe('GetKeyHandler', () => {
   let handler;

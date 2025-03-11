@@ -1,3 +1,4 @@
+import { describe, expect, it, beforeEach } from '@jest/globals';
 import { ListKeysHandler } from '../../../../src/core/keys/handlers/ListKeysHandler.js';
 import { ListKeysCommand } from '../../../../src/core/keys/commands/ListKeysCommand.js';
 import { createMockKeyService, createMockAuditLogger } from '../../../utils/index.js';
@@ -11,6 +12,36 @@ describe('ListKeysHandler', () => {
     keyService = createMockKeyService();
     auditLogger = createMockAuditLogger();
     handler = new ListKeysHandler(keyService, auditLogger);
+    
+    // Add spy capability to keyService.listKeys
+    keyService.listKeys = async (options = {}) => {
+      const mockResult = {
+        items: [
+          { id: 'key1', name: 'Key 1' },
+          { id: 'key2', name: 'Key 2' }
+        ],
+        totalItems: 100,
+        limit: options.limit || 100,
+        offset: options.offset || 0
+      };
+      
+      keyService.listKeys.mock = {
+        calls: keyService.listKeys.mock?.calls || []
+      };
+      keyService.listKeys.mock.calls.push([options]);
+      
+      return mockResult;
+    };
+    
+    // Add spy capability to auditLogger
+    auditLogger.logAdminAction = async (adminId, action, details, env, request) => {
+      auditLogger.logAdminAction.mock = {
+        calls: auditLogger.logAdminAction.mock?.calls || []
+      };
+      auditLogger.logAdminAction.mock.calls.push([adminId, action, details, env, request]);
+      
+      return "test-log-id";
+    };
   });
   
   describe('canHandle', () => {
@@ -28,7 +59,14 @@ describe('ListKeysHandler', () => {
   describe('handle', () => {
     it('should retrieve keys from the key service with correct pagination', async () => {
       const command = new ListKeysCommand({ limit: 20, offset: 40 });
-      const mockResult = {
+      
+      const result = await handler.handle(command);
+      
+      expect(keyService.listKeys.mock.calls[0][0]).toEqual({
+        limit: 20,
+        offset: 40
+      });
+      expect(result).toEqual({
         items: [
           { id: 'key1', name: 'Key 1' },
           { id: 'key2', name: 'Key 2' }
@@ -36,17 +74,7 @@ describe('ListKeysHandler', () => {
         totalItems: 100,
         limit: 20,
         offset: 40
-      };
-      
-      keyService.listKeys.mockResolvedValue(mockResult);
-      
-      const result = await handler.handle(command);
-      
-      expect(keyService.listKeys).toHaveBeenCalledWith({
-        limit: 20,
-        offset: 40
       });
-      expect(result).toEqual(mockResult);
     });
     
     it('should use default values when not specified', async () => {
@@ -54,7 +82,7 @@ describe('ListKeysHandler', () => {
       
       await handler.handle(command);
       
-      expect(keyService.listKeys).toHaveBeenCalledWith({
+      expect(keyService.listKeys.mock.calls[0][0]).toEqual({
         limit: 100,
         offset: 0
       });
@@ -62,49 +90,31 @@ describe('ListKeysHandler', () => {
     
     it('should log the action if admin info is provided', async () => {
       const command = new ListKeysCommand({ limit: 10, offset: 0 });
-      const mockResult = {
-        items: [],
-        totalItems: 50,
-        limit: 10,
-        offset: 0
-      };
       const context = { 
         adminId: 'admin-id', 
         env: { KV: {} },
         request: { headers: new Map() }
       };
       
-      keyService.listKeys.mockResolvedValue(mockResult);
-      
       await handler.handle(command, context);
       
-      expect(auditLogger.logAdminAction).toHaveBeenCalledWith(
-        'admin-id',
-        'list_keys',
-        {
-          limit: 10,
-          offset: 0,
-          totalItems: 50
-        },
-        context.env,
-        context.request
-      );
+      expect(auditLogger.logAdminAction.mock.calls[0][0]).toBe('admin-id');
+      expect(auditLogger.logAdminAction.mock.calls[0][1]).toBe('list_keys');
+      expect(auditLogger.logAdminAction.mock.calls[0][2]).toEqual({
+        limit: 10,
+        offset: 0,
+        totalItems: 100
+      });
+      expect(auditLogger.logAdminAction.mock.calls[0][3]).toBe(context.env);
+      expect(auditLogger.logAdminAction.mock.calls[0][4]).toBe(context.request);
     });
     
     it('should not log the action if admin info is not provided', async () => {
       const command = new ListKeysCommand();
-      const mockResult = {
-        items: [],
-        totalItems: 0,
-        limit: 100,
-        offset: 0
-      };
-      
-      keyService.listKeys.mockResolvedValue(mockResult);
       
       await handler.handle(command, {});
       
-      expect(auditLogger.logAdminAction).not.toHaveBeenCalled();
+      expect(auditLogger.logAdminAction.mock?.calls?.length || 0).toBe(0);
     });
   });
 });

@@ -1,30 +1,31 @@
 import { describe, expect, it } from '@jest/globals';
 
-// Create mock functions for validation tests
-const isNonEmptyString = jest.fn(value => {
+// Define validation functions directly in the test file for simplicity
+// instead of importing and mocking the real ones
+function isNonEmptyString(value) {
   return typeof value === 'string' && value.trim().length > 0;
-});
+}
 
-const isNonEmptyArray = jest.fn(value => {
+function isNonEmptyArray(value) {
   return Array.isArray(value) && value.length > 0;
-});
+}
 
-const isNonNegativeNumber = jest.fn(value => {
+function isNonNegativeNumber(value) {
   return typeof value === 'number' && !isNaN(value) && value >= 0;
-});
+}
 
-const isValidUuid = jest.fn(value => {
+function isValidUuid(value) {
   if (typeof value !== 'string') return false;
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   return uuidRegex.test(value);
-});
+}
 
-const isValidApiKey = jest.fn((value, prefix = 'km_') => {
+function isValidApiKey(value, prefix = 'km_') {
   if (typeof value !== 'string') return false;
   return value.startsWith(prefix) && value.length === prefix.length + 64;
-});
+}
 
-const validateCreateKeyParams = jest.fn(params => {
+function validateCreateKeyParams(params) {
   const errors = {};
   
   if (!params) {
@@ -55,9 +56,9 @@ const validateCreateKeyParams = jest.fn(params => {
     isValid: Object.keys(errors).length === 0,
     errors
   };
-});
+}
 
-const validatePaginationParams = jest.fn((limit, offset) => {
+function validatePaginationParams(limit, offset) {
   const errors = {};
   
   if (!isNonNegativeNumber(limit) || limit < 1 || limit > 1000) {
@@ -72,9 +73,9 @@ const validatePaginationParams = jest.fn((limit, offset) => {
     isValid: Object.keys(errors).length === 0,
     errors
   };
-});
+}
 
-const validateCursorParams = jest.fn((limit, cursor) => {
+function validateCursorParams(limit, cursor) {
   const errors = {};
   
   if (!isNonNegativeNumber(limit) || limit < 1 || limit > 1000) {
@@ -94,9 +95,9 @@ const validateCursorParams = jest.fn((limit, cursor) => {
     isValid: Object.keys(errors).length === 0,
     errors
   };
-});
+}
 
-const validateKeyRotationParams = jest.fn(params => {
+function validateKeyRotationParams(params) {
   const errors = {};
   
   if (!params) {
@@ -133,7 +134,7 @@ const validateKeyRotationParams = jest.fn(params => {
     isValid: Object.keys(errors).length === 0,
     errors
   };
-});
+}
 
 describe('Validation utilities', () => {
   describe('isNonEmptyString', () => {
@@ -349,7 +350,10 @@ describe('Validation utilities', () => {
       expect(validateCursorParams(10).isValid).toBe(true);
       expect(validateCursorParams(100, null).isValid).toBe(true);
       expect(validateCursorParams(100, '').isValid).toBe(true);
-      expect(validateCursorParams(100, btoa('{"id":"123","ts":1234}')).isValid).toBe(true);
+      
+      // Use a valid base64 string instead of btoa
+      const validBase64 = 'eyJpZCI6IjEyMyIsInRzIjoxMjM0fQ==';
+      expect(validateCursorParams(100, validBase64).isValid).toBe(true);
     });
 
     it('should reject invalid limits', () => {

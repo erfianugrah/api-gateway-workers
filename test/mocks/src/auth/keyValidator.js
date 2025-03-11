@@ -1,4 +1,8 @@
 /**
+ * Mock functions for API key validation
+ */
+
+/**
  * Mock validateApiKey function for testing
  * 
  * @param {string} apiKey - API key to validate
@@ -6,7 +10,7 @@
  * @param {Object} env - Environment bindings
  * @returns {Promise<Object>} Validation result
  */
-export const validateApiKey = jest.fn(async (apiKey, requiredScopes = [], env) => {
+export async function validateApiKey(apiKey, requiredScopes = [], env) {
   // Basic validation logic for testing
   if (!apiKey) {
     return { valid: false, error: "No API key provided" };
@@ -63,7 +67,7 @@ export const validateApiKey = jest.fn(async (apiKey, requiredScopes = [], env) =
       error: "Invalid API key",
     };
   }
-});
+}
 
 /**
  * Check if a key has a required scope
@@ -72,7 +76,7 @@ export const validateApiKey = jest.fn(async (apiKey, requiredScopes = [], env) =
  * @param {string} requiredScope - Required scope
  * @returns {boolean} True if key has the scope
  */
-export const hasScope = jest.fn((validatedKey, requiredScope) => {
+export function hasScope(validatedKey, requiredScope) {
   if (!validatedKey || !validatedKey.valid || !validatedKey.scopes) {
     return false;
   }
@@ -104,4 +108,4 @@ export const hasScope = jest.fn((validatedKey, requiredScope) => {
   }
   
   return false;
-});
+}

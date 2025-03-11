@@ -33,6 +33,8 @@ A secure, scalable Cloudflare Workers service for API key management with role-b
 - **Header Manipulation**: Add, modify, or remove headers for proxied requests
 - **Fault Tolerance**: Circuit breaker pattern and retry mechanisms
 - **Timeout Management**: Configurable timeouts with request cancellation
+- **OpenAPI Configuration**: Schema-validated configuration system with defaults
+- **Environment Variable Support**: Flexible configuration through env vars or config files
 
 ## Architecture
 
@@ -142,7 +144,10 @@ api-gateway-workers/
 │   │       ├── http.js            # HTTP mocks
 │   │       └── cloudflare.js      # Cloudflare mocks
 ├── docs/                          # Documentation
-└── wrangler.jsonc                 # Cloudflare Workers configuration
+├── schemas/                        # Schema definitions
+│   └── config.schema.json          # Configuration validation schema
+├── config.example.json             # Example configuration file
+└── wrangler.jsonc                  # Cloudflare Workers configuration
 ```
 
 ## Role-Based Access Control
@@ -289,26 +294,62 @@ All administrative actions are logged for accountability:
    wrangler secret put HMAC_SECRET
    ```
 
-### Environment Variables
+### Configuration System
 
-The service uses the following environment variables:
+The API Gateway supports a comprehensive configuration system with multiple options:
 
-#### Core Configuration Variables
-- `ENCRYPTION_KEY`: Secret key for encrypting API keys at rest
-- `HMAC_SECRET`: Secret for generating HMAC signatures
+#### JSON Configuration File
+You can provide a JSON configuration file:
 
-#### API Gateway Configuration Variables
-- `ROUTING_API_VERSIONING_ENABLED`: Enable/disable API versioning (default: true)
-- `API_VERSION_CURRENT`: Current API version (default: "1")
-- `API_VERSIONS_SUPPORTED`: Comma-separated list of supported versions (default: "1")
-- `API_VERSIONS_DEPRECATED`: Comma-separated list of deprecated versions
-- `API_VERSION_HEADER`: Header for API version (default: "X-API-Version")
-- `PROXY_ENABLED`: Enable/disable proxy functionality (default: false)
-- `PROXY_TIMEOUT`: Default timeout in milliseconds for proxied requests (default: 30000)
-- `PROXY_RETRY_ENABLED`: Enable/disable retry mechanism (default: true)
-- `PROXY_RETRY_MAX_ATTEMPTS`: Maximum retry attempts (default: 3)
-- `PROXY_CIRCUIT_BREAKER_ENABLED`: Enable/disable circuit breaker (default: true)
-- `DEBUG`: Enable detailed logging for debugging (default: false)
+```bash
+# Specify configuration file path
+CONFIG_PATH=/path/to/config.json npm run dev
+```
+
+#### Environment Variables
+All configuration options can be set via environment variables with a `CONFIG_` prefix:
+
+```bash
+# Set configuration via environment variables
+CONFIG_LOGGING_LEVEL=debug CONFIG_SECURITY_API_KEY_HEADER=X-Custom-Key npm run dev
+```
+
+Environment variables use underscore notation and are converted to the appropriate nested structure.
+
+#### Configuration Options
+
+##### Core Configuration
+- `encryption.key`: Secret key for encrypting API keys at rest (required in production)
+- `hmac.secret`: Secret for generating HMAC signatures (required in production)
+
+##### Logging Configuration
+- `logging.level`: Sets logging verbosity (`error`, `warn`, `info`, `debug`, `trace`)
+- `logging.includeTrace`: Include stack traces in error logs (`true`/`false`)
+- `logging.requestIdHeader`: Header to extract request ID from (default: `X-Request-ID`)
+
+##### Security Configuration
+- `security.cors.allowOrigin`: Value for Access-Control-Allow-Origin header (default: `*`)
+- `security.cors.allowMethods`: Value for Access-Control-Allow-Methods header
+- `security.cors.allowHeaders`: Value for Access-Control-Allow-Headers header
+- `security.apiKeyHeader`: Header name for API key authentication (default: `X-API-Key`)
+
+##### API Configuration
+- `routing.versioning.enabled`: Enable/disable API versioning (default: true)
+- `routing.versioning.current`: Current API version (default: "1")
+- `routing.versioning.supported`: Array of supported versions (default: ["1"])
+- `routing.versioning.deprecated`: Array of deprecated versions
+- `routing.versioning.versionHeader`: Header for API version (default: "X-API-Version")
+- `routing.versioning.format`: Format for version in URL (default: "/v${version}")
+
+##### Proxy Configuration
+- `proxy.enabled`: Enable/disable proxy functionality (default: false)
+- `proxy.timeout`: Default timeout in milliseconds for proxied requests (default: 30000)
+- `proxy.retry.enabled`: Enable/disable retry mechanism (default: true)
+- `proxy.retry.maxAttempts`: Maximum retry attempts (default: 3)
+- `proxy.circuitBreaker.enabled`: Enable/disable circuit breaker (default: true)
+- `proxy.services`: Object defining upstream services for proxying
+
+Configuration is validated against an OpenAPI schema defined in `schemas/config.schema.json`.
 
 ### Deployment Steps
 
@@ -418,6 +459,7 @@ Detailed documentation is available in the `docs/` folder:
 
 - [API Reference](./docs/API.md) - Detailed API documentation
 - [Gateway Features](./docs/GATEWAY.md) - API Gateway functionality and implementation
+- [Configuration Guide](./docs/CONFIGURATION.md) - Comprehensive configuration options
 - [Architecture](./docs/ARCHITECTURE.md) - System design and component interaction
 - [Security Implementation](./docs/SECURITY.md) - Security features and considerations
 - [Quick Start Guide](./docs/QUICKSTART.md) - Get up and running quickly

@@ -1,5 +1,6 @@
 // Import the command
 import { CreateKeyCommand } from '../../../../src/core/keys/commands/CreateKeyCommand.js';
+import { jest, describe, it, expect, beforeEach } from '@jest/globals';
 
 // Create a mock for validateCreateKeyParams
 const validateCreateKeyParams = jest.fn((params) => {

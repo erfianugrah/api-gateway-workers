@@ -142,6 +142,7 @@ describe('Response utilities', () => {
       
       expect(response.status).toBe(405);
       expect(JSON.parse(response.body).error).toBe('Method Not Allowed');
+      // Headers are passed in options parameter, so they're not set in this test
     });
   });
 

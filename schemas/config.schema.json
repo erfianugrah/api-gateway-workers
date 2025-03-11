@@ -1,0 +1,420 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "API Gateway Workers Configuration Schema",
+    "description": "Configuration schema for the API Gateway Workers project",
+    "version": "1.0.0"
+  },
+  "components": {
+    "schemas": {
+      "Config": {
+        "type": "object",
+        "properties": {
+          "encryption": {
+            "type": "object",
+            "description": "Encryption settings for API keys",
+            "properties": {
+              "key": {
+                "type": "string",
+                "description": "Secret key for encrypting API keys at rest (required in production)"
+              },
+              "algorithm": {
+                "type": "string",
+                "description": "Encryption algorithm to use",
+                "default": "AES-GCM"
+              },
+              "iterations": {
+                "type": "integer",
+                "description": "Number of iterations for key derivation",
+                "default": 100000
+              }
+            },
+            "required": ["key"]
+          },
+          "hmac": {
+            "type": "object",
+            "description": "HMAC settings for signatures",
+            "properties": {
+              "secret": {
+                "type": "string",
+                "description": "Secret for generating HMAC signatures (required in production)"
+              },
+              "algorithm": {
+                "type": "string",
+                "description": "HMAC algorithm to use",
+                "default": "SHA-384"
+              }
+            },
+            "required": ["secret"]
+          },
+          "keys": {
+            "type": "object",
+            "description": "API key management settings",
+            "properties": {
+              "prefix": {
+                "type": "string",
+                "description": "Prefix for generated API keys",
+                "default": "km_"
+              },
+              "defaultExpirationDays": {
+                "type": "integer",
+                "description": "Default expiration period in days (0 for no expiration)",
+                "default": 0
+              },
+              "maxNameLength": {
+                "type": "integer",
+                "description": "Maximum length of key names",
+                "default": 255
+              },
+              "maxOwnerLength": {
+                "type": "integer",
+                "description": "Maximum length of key owner names",
+                "default": 255
+              },
+              "maxScopeLength": {
+                "type": "integer",
+                "description": "Maximum length of individual scope strings",
+                "default": 100
+              },
+              "maxScopes": {
+                "type": "integer",
+                "description": "Maximum number of scopes per key",
+                "default": 50
+              }
+            }
+          },
+          "logging": {
+            "type": "object",
+            "description": "Logging configuration",
+            "properties": {
+              "level": {
+                "type": "string",
+                "description": "Logging level (error, warn, info, debug, trace)",
+                "enum": ["error", "warn", "info", "debug", "trace"],
+                "default": "info"
+              },
+              "includeTrace": {
+                "type": "boolean",
+                "description": "Include stack traces in error logs",
+                "default": true
+              },
+              "requestIdHeader": {
+                "type": "string",
+                "description": "Header name for request ID",
+                "default": "X-Request-ID"
+              }
+            }
+          },
+          "security": {
+            "type": "object",
+            "description": "Security settings",
+            "properties": {
+              "cors": {
+                "type": "object",
+                "description": "CORS configuration",
+                "properties": {
+                  "allowOrigin": {
+                    "type": "string",
+                    "description": "Value for Access-Control-Allow-Origin header",
+                    "default": "*"
+                  },
+                  "allowMethods": {
+                    "type": "string",
+                    "description": "Value for Access-Control-Allow-Methods header",
+                    "default": "GET, POST, PUT, DELETE, OPTIONS"
+                  },
+                  "allowHeaders": {
+                    "type": "string",
+                    "description": "Value for Access-Control-Allow-Headers header",
+                    "default": "Content-Type, Authorization, X-API-Key"
+                  },
+                  "maxAge": {
+                    "type": "integer",
+                    "description": "Value for Access-Control-Max-Age header in seconds",
+                    "default": 86400
+                  }
+                }
+              },
+              "headers": {
+                "type": "object",
+                "description": "Custom security headers",
+                "additionalProperties": {
+                  "type": "string"
+                }
+              },
+              "apiKeyHeader": {
+                "type": "string",
+                "description": "Header name for API key authentication",
+                "default": "X-API-Key"
+              }
+            }
+          },
+          "rateLimit": {
+            "type": "object",
+            "description": "Rate limiting configuration",
+            "properties": {
+              "defaultLimit": {
+                "type": "integer",
+                "description": "Default rate limit per window",
+                "default": 100
+              },
+              "defaultWindow": {
+                "type": "integer",
+                "description": "Default rate limit window in milliseconds",
+                "default": 60000
+              },
+              "endpoints": {
+                "type": "object",
+                "description": "Endpoint-specific rate limits",
+                "additionalProperties": {
+                  "type": "object",
+                  "properties": {
+                    "limit": {
+                      "type": "integer",
+                      "description": "Rate limit for this endpoint"
+                    },
+                    "window": {
+                      "type": "integer",
+                      "description": "Rate limit window in milliseconds"
+                    }
+                  }
+                },
+                "default": {
+                  "/validate": { "limit": 300 },
+                  "/keys": { "limit": 60 }
+                }
+              },
+              "headers": {
+                "type": "object",
+                "description": "Rate limit response header names",
+                "properties": {
+                  "limit": {
+                    "type": "string",
+                    "description": "Header for rate limit",
+                    "default": "X-RateLimit-Limit"
+                  },
+                  "remaining": {
+                    "type": "string",
+                    "description": "Header for remaining requests",
+                    "default": "X-RateLimit-Remaining"
+                  },
+                  "reset": {
+                    "type": "string",
+                    "description": "Header for rate limit reset time",
+                    "default": "X-RateLimit-Reset"
+                  }
+                }
+              }
+            }
+          },
+          "routing": {
+            "type": "object",
+            "description": "Routing configuration",
+            "properties": {
+              "versioning": {
+                "type": "object",
+                "description": "API versioning configuration",
+                "properties": {
+                  "enabled": {
+                    "type": "boolean",
+                    "description": "Enable API versioning",
+                    "default": true
+                  },
+                  "current": {
+                    "type": "string",
+                    "description": "Current API version",
+                    "default": "1"
+                  },
+                  "supported": {
+                    "type": "array",
+                    "description": "List of supported API versions",
+                    "items": {
+                      "type": "string"
+                    },
+                    "default": ["1"]
+                  },
+                  "deprecated": {
+                    "type": "array",
+                    "description": "List of deprecated API versions",
+                    "items": {
+                      "type": "string"
+                    },
+                    "default": []
+                  },
+                  "versionHeader": {
+                    "type": "string",
+                    "description": "Header to get API version from",
+                    "default": "X-API-Version"
+                  }
+                }
+              },
+              "paramValidation": {
+                "type": "object",
+                "description": "Path parameter validation patterns",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "description": "Regex pattern for ID parameters",
+                    "default": "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                  },
+                  "date": {
+                    "type": "string",
+                    "description": "Regex pattern for date parameters",
+                    "default": "\\d{4}-\\d{2}-\\d{2}"
+                  },
+                  "status": {
+                    "type": "string",
+                    "description": "Regex pattern for status parameters",
+                    "default": "(active|revoked|expired)"
+                  }
+                },
+                "additionalProperties": {
+                  "type": "string",
+                  "description": "Custom regex pattern for parameter validation"
+                }
+              },
+              "priority": {
+                "type": "object",
+                "description": "Route priority configuration (lower number = higher priority)",
+                "properties": {
+                  "exact": {
+                    "type": "integer",
+                    "description": "Priority for exact path matches",
+                    "default": 1
+                  },
+                  "parameter": {
+                    "type": "integer",
+                    "description": "Priority for parametrized path matches",
+                    "default": 2
+                  },
+                  "regex": {
+                    "type": "integer",
+                    "description": "Priority for regex path matches",
+                    "default": 3
+                  }
+                }
+              }
+            }
+          },
+          "proxy": {
+            "type": "object",
+            "description": "Proxy configuration for gateway functionality",
+            "properties": {
+              "enabled": {
+                "type": "boolean",
+                "description": "Enable proxy functionality",
+                "default": false
+              },
+              "timeout": {
+                "type": "integer",
+                "description": "Default timeout for proxied requests in milliseconds",
+                "default": 30000
+              },
+              "headers": {
+                "type": "object",
+                "description": "Default headers to add to proxied requests",
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "default": {
+                  "X-Forwarded-By": "key-manager-gateway"
+                }
+              },
+              "circuitBreaker": {
+                "type": "object",
+                "description": "Circuit breaker configuration",
+                "properties": {
+                  "enabled": {
+                    "type": "boolean",
+                    "description": "Enable circuit breaker functionality",
+                    "default": true
+                  },
+                  "failureThreshold": {
+                    "type": "integer",
+                    "description": "Number of failures before opening the circuit",
+                    "default": 5
+                  },
+                  "resetTimeout": {
+                    "type": "integer",
+                    "description": "Time in milliseconds before attempting to close the circuit",
+                    "default": 30000
+                  }
+                }
+              },
+              "retry": {
+                "type": "object",
+                "description": "Retry configuration",
+                "properties": {
+                  "enabled": {
+                    "type": "boolean",
+                    "description": "Enable request retry functionality",
+                    "default": true
+                  },
+                  "maxAttempts": {
+                    "type": "integer",
+                    "description": "Maximum number of retry attempts",
+                    "default": 3
+                  },
+                  "backoff": {
+                    "type": "integer",
+                    "description": "Initial backoff in milliseconds (doubles with each retry)",
+                    "default": 1000
+                  }
+                }
+              },
+              "services": {
+                "type": "object",
+                "description": "Upstream service configurations for proxying",
+                "additionalProperties": {
+                  "type": "object",
+                  "description": "Upstream service configuration",
+                  "properties": {
+                    "target": {
+                      "type": "string",
+                      "description": "Target URL for the service"
+                    },
+                    "pathRewrite": {
+                      "type": "object",
+                      "description": "Path rewrite rules (regex pattern to replacement)",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    },
+                    "headers": {
+                      "type": "object",
+                      "description": "Headers to add to requests for this service",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    },
+                    "timeout": {
+                      "type": "integer",
+                      "description": "Service-specific timeout in milliseconds"
+                    }
+                  },
+                  "required": ["target"]
+                }
+              }
+            }
+          },
+          "maintenance": {
+            "type": "object",
+            "description": "Maintenance operation configuration",
+            "properties": {
+              "cleanupIntervalHours": {
+                "type": "integer",
+                "description": "Interval in hours between cleanup operations",
+                "default": 24
+              },
+              "retryIntervalHours": {
+                "type": "integer",
+                "description": "Interval in hours before retrying a failed cleanup",
+                "default": 1
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

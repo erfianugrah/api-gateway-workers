@@ -1,6 +1,21 @@
 # Quick Start Guide
 
-This guide will help you quickly get started with the API Key Manager service.
+This guide will help you quickly set up and start using the API Key Manager service.
+
+## Overview
+
+```mermaid
+flowchart LR
+    A[Installation] --> B[Configuration]
+    B --> C[Development]
+    C --> D[First-Time Setup]
+    D --> E[API Key Operations]
+    E --> F[Integration]
+    
+    style A fill:#f9f,stroke:#333,stroke-width:2px
+    style D fill:#bbf,stroke:#333,stroke-width:2px
+    style E fill:#bfb,stroke:#333,stroke-width:2px
+```
 
 ## Prerequisites
 
@@ -10,6 +25,24 @@ This guide will help you quickly get started with the API Key Manager service.
 - A Cloudflare account (free tier is sufficient)
 
 ## Installation
+
+```mermaid
+sequenceDiagram
+    participant Dev as Developer
+    participant Repo as Git Repository
+    participant NPM as npm
+    participant CF as Cloudflare
+
+    Dev->>Repo: git clone
+    Repo-->>Dev: Download code
+    Dev->>NPM: npm install
+    NPM-->>Dev: Install dependencies
+    Dev->>CF: wrangler login
+    CF-->>Dev: Authenticate
+    Dev->>CF: Create KV namespace
+    CF-->>Dev: KV namespace ID
+    Dev->>Dev: Update wrangler.jsonc
+```
 
 1. Clone the repository:
 
@@ -41,6 +74,17 @@ Copy the ID from the output and update your wrangler.jsonc file with the correct
 
 ## Local Development
 
+```mermaid
+graph TD
+    A[Start Development Server] -->|npm run dev| B[Local Server Running]
+    B --> C{Access API}
+    C -->|Create Keys| D[Key Management]
+    C -->|Validate Keys| E[Key Validation]
+    C -->|System Operations| F[Maintenance]
+    
+    style B fill:#bbf,stroke:#333,stroke-width:2px
+```
+
 Start a local development server:
 
 ```bash
@@ -50,6 +94,19 @@ npm run dev
 This will start the API Key Manager service on `http://localhost:8787`.
 
 ## First-Time Setup
+
+```mermaid
+sequenceDiagram
+    participant Dev as Developer
+    participant Service as API Key Manager
+    participant Storage as KV Storage
+
+    Dev->>Service: POST /setup with admin info
+    Service->>Storage: Create Super Admin Key
+    Storage-->>Service: Confirm creation
+    Service-->>Dev: Return Super Admin Key
+    Note over Dev,Service: IMPORTANT: Save this key securely
+```
 
 When you first deploy the service, you need to create the initial super admin:
 
@@ -82,7 +139,39 @@ Response:
 
 All administrative operations require an API key with appropriate permissions. Include your admin API key in the `X-Api-Key` header for all administrative requests.
 
+### API Key Lifecycle
+
+```mermaid
+stateDiagram-v2
+    [*] --> Active: Create
+    Active --> Rotated: Rotate
+    Rotated --> Expired: Grace Period Ends
+    Active --> Revoked: Revoke
+    Rotated --> Revoked: Revoke
+    Expired --> [*]
+    Revoked --> [*]
+    
+    note right of Active: Key is valid and in use
+    note right of Rotated: Old key still works during grace period
+    note right of Revoked: Key is invalidated immediately
+    note right of Expired: Key is no longer valid
+```
+
 ### Creating an API Key
+
+```mermaid
+sequenceDiagram
+    participant Admin as Admin
+    participant Service as API Key Manager
+    participant Storage as KV Storage
+
+    Admin->>Service: POST /keys with key details
+    Service->>Service: Validate permissions
+    Service->>Service: Generate secure key
+    Service->>Storage: Store key data
+    Storage-->>Service: Confirm storage
+    Service-->>Admin: Return new key info
+```
 
 ```bash
 curl -X POST http://localhost:8787/keys \
@@ -167,6 +256,22 @@ Response:
 
 ### Rotating an API Key
 
+```mermaid
+sequenceDiagram
+    participant Admin as Admin
+    participant Service as API Key Manager
+    participant Storage as KV Storage
+
+    Admin->>Service: POST /keys/{id}/rotate
+    Service->>Storage: Mark original key as rotated
+    Service->>Service: Generate new key
+    Service->>Storage: Store new key with same permissions
+    Service->>Storage: Link keys for rotation tracking
+    Storage-->>Service: Confirm changes
+    Service-->>Admin: Return both keys info
+    Note over Service,Storage: Original key works until grace period ends
+```
+
 To rotate a key (create a new key while maintaining a grace period for the old one):
 
 ```bash
@@ -224,6 +329,22 @@ Response:
 ## Public Endpoints
 
 ### Validating an API Key
+
+```mermaid
+sequenceDiagram
+    participant Client as Client Application
+    participant Service as API Key Manager
+    participant Storage as KV Storage
+
+    Client->>Service: POST /validate with key & scopes
+    Service->>Storage: Check key existence
+    Storage-->>Service: Return key metadata
+    Service->>Service: Verify status (active/rotated)
+    Service->>Service: Check scopes match required
+    Service->>Service: Check not expired/revoked
+    Service-->>Client: Return validation result
+    Note over Service,Client: If rotated, includes warning
+```
 
 The validation endpoint is public (doesn't require admin authentication) and can be used by your services to validate API keys.
 
@@ -294,6 +415,22 @@ Response:
 
 ### Running Maintenance Tasks
 
+```mermaid
+flowchart TB
+    A[Start Maintenance] --> B{Maintenance Type}
+    B -->|Cleanup| C[Find Expired Keys]
+    B -->|Audit| D[Run Audit Checks]
+    
+    C --> E[Revoke Expired Keys]
+    C --> F[Clear Stale Keys]
+    C --> G[Finalize Rotations]
+    
+    E --> H[Maintenance Report]
+    F --> H
+    G --> H
+    D --> H
+```
+
 To manually trigger cleanup of expired keys (requires admin:system:maintenance permission):
 
 ```bash
@@ -346,6 +483,24 @@ Response:
 
 ## Role-Based Access Control
 
+```mermaid
+graph TD
+    SUPER_ADMIN["SUPER_ADMIN (Full System Access)"]
+    KEY_ADMIN["KEY_ADMIN (Key Management)"]
+    KEY_VIEWER["KEY_VIEWER (Read-only)"]
+    USER_ADMIN["USER_ADMIN (User Management)"]
+    SUPPORT["SUPPORT (Limited Access)"]
+    CUSTOM["CUSTOM (Custom Permissions)"]
+    
+    SUPER_ADMIN -->|Includes| KEY_ADMIN
+    SUPER_ADMIN -->|Includes| USER_ADMIN
+    SUPER_ADMIN -->|Includes| SUPPORT
+    KEY_ADMIN -->|Includes| KEY_VIEWER
+    
+    style SUPER_ADMIN fill:#f96,stroke:#333,stroke-width:2px
+    style CUSTOM fill:#9bf,stroke:#333,stroke-width:2px
+```
+
 The API Key Manager uses role-based access control with the following predefined roles:
 
 | Role | Description | Key Permissions |
@@ -358,6 +513,25 @@ The API Key Manager uses role-based access control with the following predefined
 | CUSTOM | Custom permissions | (as specified during creation) |
 
 ## Client Integration
+
+```mermaid
+sequenceDiagram
+    participant App as Your Application
+    participant KM as API Key Manager
+    participant Backend as Your Backend API
+    
+    App->>KM: Validate API Key
+    KM-->>App: Validation Result
+    
+    alt Key Valid
+        App->>Backend: Make API Request with Key
+        Backend->>KM: Validate Key + Check Scopes
+        KM-->>Backend: Validation Result
+        Backend-->>App: API Response
+    else Key Invalid
+        App->>App: Handle Authentication Error
+    end
+```
 
 Here are examples of how to integrate the API Key Manager with your applications.
 
@@ -455,7 +629,96 @@ def create_api_key(admin_key, key_data):
         raise Exception(f"Failed to create API key: {error.get('error', 'Unknown error')}")
 ```
 
+### Express.js Middleware Example
+
+```javascript
+// API Key validation middleware for Express.js
+function apiKeyMiddleware(requiredScopes = []) {
+  return async (req, res, next) => {
+    const apiKey = req.headers['x-api-key'];
+    
+    if (!apiKey) {
+      return res.status(401).json({ 
+        error: 'API key is required' 
+      });
+    }
+    
+    try {
+      const response = await fetch('https://your-worker.workers.dev/validate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': apiKey
+        },
+        body: JSON.stringify({ scopes: requiredScopes })
+      });
+      
+      const result = await response.json();
+      
+      if (result.valid) {
+        // Add validated info to request object
+        req.apiKey = {
+          id: result.keyId,
+          owner: result.owner,
+          scopes: result.scopes
+        };
+        
+        // Check for rotation warning
+        if (result.warning) {
+          // Add header to inform client about rotation
+          res.setHeader('X-API-Key-Warning', result.warning);
+        }
+        
+        next();
+      } else {
+        return res.status(403).json({ 
+          error: result.error || 'Invalid API key' 
+        });
+      }
+    } catch (error) {
+      console.error('API key validation error:', error);
+      return res.status(500).json({ 
+        error: 'Failed to validate API key' 
+      });
+    }
+  };
+}
+
+// Usage in Express routes
+app.get('/protected-resource', 
+  apiKeyMiddleware(['read:data']), 
+  (req, res) => {
+    // Access is granted and key is valid
+    res.json({ 
+      message: 'Success', 
+      data: 'Protected data',
+      keyOwner: req.apiKey.owner
+    });
+  }
+);
+```
+
 ## Deployment
+
+```mermaid
+flowchart TB
+    A[Prepare for Deployment] --> B{Environment}
+    B -->|Development| C[Set Dev Secrets]
+    B -->|Production| D[Set Prod Secrets]
+    
+    C --> E[Deploy to Dev]
+    D --> F[Deploy to Production]
+    
+    E --> G[Run Setup]
+    F --> H[Run Setup]
+    
+    G --> I[Test Deployment]
+    H --> J[Monitor Production]
+    
+    style F fill:#f96,stroke:#333,stroke-width:2px
+    style H fill:#f96,stroke:#333,stroke-width:2px
+    style J fill:#f96,stroke:#333,stroke-width:2px
+```
 
 Deploy to Cloudflare Workers:
 
@@ -475,7 +738,40 @@ wrangler secret put ENCRYPTION_KEY
 wrangler secret put HMAC_SECRET
 ```
 
+### Recommended Secret Generation
+
+For maximum security, generate strong random values for your secrets:
+
+```bash
+# Generate a secure encryption key (32 bytes)
+openssl rand -base64 32
+
+# Generate a secure HMAC secret (32 bytes)
+openssl rand -base64 32
+```
+
 ## Next Steps
+
+```mermaid
+mindmap
+    root((API Key Manager))
+        API Documentation
+            Endpoints
+            Request/Response
+            Error Codes
+        Architecture
+            Clean Architecture
+            Command Pattern
+            Storage Layer
+        Security
+            Encryption
+            HMAC Validation
+            Key Format
+        Contributions
+            Development Setup
+            Testing
+            Pull Requests
+```
 
 - Read the full [API documentation](./API.md)
 - Learn about the [architecture](./ARCHITECTURE.md)
@@ -483,6 +779,25 @@ wrangler secret put HMAC_SECRET
 - See how to [contribute](../CONTRIBUTING.md)
 
 ## Troubleshooting
+
+```mermaid
+flowchart TD
+    A[Experiencing an Issue] --> B{Issue Type}
+    B -->|KV Error| C[Check KV Binding]
+    B -->|Setup Error| D[Check First-Time Setup]
+    B -->|Permission Error| E[Check API Key Permissions]
+    B -->|Key Format Error| F[Check Key Format]
+    
+    C -->|Missing Binding| G[Update wrangler.jsonc]
+    D -->|Already Setup| H[Use Existing Admin Key]
+    E -->|Insufficient Permissions| I[Check Required Scopes]
+    F -->|Truncated/Modified| J[Ensure Proper Key Format]
+    
+    G --> K[Resolved]
+    H --> K
+    I --> K
+    J --> K
+```
 
 ### Common Issues
 
@@ -512,5 +827,16 @@ This means your API key doesn't have the required permission scope for the opera
 **"Invalid API key format"**
 
 Ensure your API keys are in the correct format (starting with `km_` followed by a hex string) and have not been truncated or modified.
+
+### Debug Mode
+
+For more detailed error information during development, set the debug mode:
+
+```bash
+# Enable debug mode for local development
+CONFIG_LOGGING_LEVEL=debug npm run dev
+```
+
+This will provide more detailed logs in the console to help diagnose issues.
 
 For more help, please [open an issue](https://github.com/yourusername/key-manager-workers/issues).

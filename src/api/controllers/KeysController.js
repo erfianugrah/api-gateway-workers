@@ -87,7 +87,10 @@ export class KeysController extends BaseController {
     
     // Add API version header if applicable
     if (apiVersion) {
-      headers["X-API-Version"] = apiVersion.toString();
+      const versionHeader = this.services.config ? 
+        this.services.config.get('routing.versioning.versionHeader', 'X-API-Version') : 
+        'X-API-Version';
+      headers[versionHeader] = apiVersion.toString();
     }
 
     return successResponse(result.items, { headers });

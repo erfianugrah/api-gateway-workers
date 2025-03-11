@@ -131,7 +131,9 @@ export class Router {
     
     // Add routes for all supported versions
     for (const version of versionInfo.supported) {
-      const versionedPath = `/v${version}${path}`;
+      // Use versioning format from config, or default to /v{version}
+      const format = this.config.get('routing.versioning.format', '/v${version}');
+      const versionedPath = format.replace('${version}', version) + path;
       this.add(method, versionedPath, ...handlers);
     }
     
@@ -391,7 +393,7 @@ export class Router {
         params: route.params,
       });
     } catch (error) {
-      return this.errorResponse(error, originalRequest);
+      return this.errorResponse(error, originalRequest, context);
     }
   }
 
@@ -434,12 +436,28 @@ export class Router {
    *
    * @param {Error} error - The error
    * @param {Request} request - Original request
+   * @param {Object} context - Request context
    * @returns {Response} Error response
    */
-  errorResponse(error, request) {
-    console.error("Router error:", error);
+  errorResponse(error, request, context = {}) {
+    // Use the logger if available in the context, otherwise fallback to console
+    if (context.services?.logger) {
+      context.services.logger.error("Router error", {
+        error,
+        path: new URL(request.url).pathname,
+        method: request.method,
+        requestId: context.services.logger.getRequestId(request)
+      });
+    } else {
+      console.error("Router error:", error);
+    }
 
-    // Basic error handling
+    // Use the error handler if available in the context
+    if (context.services?.errorHandler) {
+      return context.services.errorHandler(error, request);
+    }
+
+    // Fallback error handling
     return new Response(
       JSON.stringify({
         error: "An unexpected error occurred",

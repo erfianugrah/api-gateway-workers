@@ -42,6 +42,11 @@ export class Config {
           maxAge: 86400, // 24 hours
         },
       },
+      logging: {
+        level: env.LOG_LEVEL || (env.NODE_ENV === "production" ? "error" : "info"),
+        includeTrace: env.LOG_INCLUDE_TRACE === "true" || env.NODE_ENV !== "production",
+        requestIdHeader: env.REQUEST_ID_HEADER || "X-Request-ID",
+      },
       maintenance: {
         cleanupIntervalHours: 24,
         retryIntervalHours: 1,
@@ -167,6 +172,19 @@ export class Config {
     
     if (env.PROXY_CIRCUIT_BREAKER_ENABLED !== undefined) {
       this.values.proxy.circuitBreaker.enabled = env.PROXY_CIRCUIT_BREAKER_ENABLED === 'true';
+    }
+    
+    // Logging overrides
+    if (env.LOG_LEVEL) {
+      this.values.logging.level = env.LOG_LEVEL;
+    }
+    
+    if (env.LOG_INCLUDE_TRACE !== undefined) {
+      this.values.logging.includeTrace = env.LOG_INCLUDE_TRACE === 'true';
+    }
+    
+    if (env.REQUEST_ID_HEADER) {
+      this.values.logging.requestIdHeader = env.REQUEST_ID_HEADER;
     }
   }
 

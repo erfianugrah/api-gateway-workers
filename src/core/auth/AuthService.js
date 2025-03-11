@@ -9,10 +9,12 @@ export class AuthService {
    *
    * @param {Object} keyService - Key service for validating API keys
    * @param {Object} roleManager - Role manager for permission checks
+   * @param {Object} [config] - Optional configuration instance
    */
-  constructor(keyService, roleManager) {
+  constructor(keyService, roleManager, config = null) {
     this.keyService = keyService;
     this.roleManager = roleManager;
+    this.config = config;
   }
 
   /**

@@ -1,5 +1,6 @@
 import { ValidateKeyHandler } from '../../../../src/core/keys/handlers/ValidateKeyHandler.js';
 import { ValidateKeyCommand } from '../../../../src/core/keys/commands/ValidateKeyCommand.js';
+import { jest, describe, it, expect, beforeEach } from '@jest/globals';
 
 describe('ValidateKeyHandler', () => {
   // Create mock KeyService

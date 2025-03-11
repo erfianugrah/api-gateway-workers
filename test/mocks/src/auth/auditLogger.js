@@ -1,4 +1,6 @@
 // Mock audit logger functions
+import { jest } from '@jest/globals';
+
 export const logAdminAction = jest.fn().mockResolvedValue(undefined);
 export const logValidation = jest.fn().mockResolvedValue(undefined);
 export const getActionLogs = jest.fn().mockResolvedValue({

@@ -1,0 +1,68 @@
+{
+  "encryption": {
+    "key": "your-secure-encryption-key",
+    "algorithm": "AES-GCM"
+  },
+  "hmac": {
+    "secret": "your-secure-hmac-secret",
+    "algorithm": "SHA-384"
+  },
+  "keys": {
+    "prefix": "km_",
+    "defaultExpirationDays": 90
+  },
+  "logging": {
+    "level": "info",
+    "includeTrace": false,
+    "requestIdHeader": "X-Request-ID"
+  },
+  "security": {
+    "cors": {
+      "allowOrigin": "https://your-app.example.com",
+      "allowMethods": "GET, POST, PUT, DELETE, OPTIONS",
+      "allowHeaders": "Content-Type, Authorization, X-API-Key, X-Request-ID"
+    },
+    "apiKeyHeader": "X-API-Key"
+  },
+  "rateLimit": {
+    "defaultLimit": 100,
+    "endpoints": {
+      "/validate": { "limit": 300 },
+      "/keys": { "limit": 60 }
+    }
+  },
+  "routing": {
+    "versioning": {
+      "enabled": true,
+      "current": "1",
+      "supported": ["1", "2"],
+      "deprecated": []
+    }
+  },
+  "proxy": {
+    "enabled": true,
+    "timeout": 5000,
+    "circuitBreaker": {
+      "enabled": true,
+      "failureThreshold": 5,
+      "resetTimeout": 30000
+    },
+    "services": {
+      "userService": {
+        "target": "https://users-api.example.com",
+        "pathRewrite": {
+          "^/api/users": "/v2/users"
+        },
+        "headers": {
+          "X-Service-Key": "your-service-key"
+        }
+      },
+      "productService": {
+        "target": "https://products-api.example.com",
+        "pathRewrite": {
+          "^/api/products": "/v1/products"
+        }
+      }
+    }
+  }
+}

@@ -1,6 +1,7 @@
 /**
  * Mock storage implementations for testing
  */
+import { jest } from '@jest/globals';
 
 /**
  * Create a mock storage implementation

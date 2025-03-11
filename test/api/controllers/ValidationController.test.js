@@ -1,3 +1,4 @@
+import { describe, expect, it } from '@jest/globals';
 import { ValidationController } from '../../../src/api/controllers/ValidationController.js';
 import { ValidateKeyCommand } from '../../../src/core/keys/commands/ValidateKeyCommand.js';
 
@@ -5,7 +6,9 @@ import { ValidateKeyCommand } from '../../../src/core/keys/commands/ValidateKeyC
 describe('ValidationController - Simple Test', () => {
   it('should create a controller successfully', () => {
     // Create mock dependencies
-    const mockCommandBus = { execute: jest.fn() };
+    const mockCommandBus = {
+      execute: async () => ({ valid: true, scopes: ['read:data'] })
+    };
     
     // Create controller
     const controller = new ValidationController({
@@ -15,6 +18,7 @@ describe('ValidationController - Simple Test', () => {
     });
     
     // Verify controller was created
-    expect(controller).toBeInstanceOf(ValidationController);
+    expect(controller).toBeDefined();
+    expect(typeof controller.validateKey).toBe('function');
   });
 });

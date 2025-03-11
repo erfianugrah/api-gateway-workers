@@ -1,7 +1,6 @@
 import { setupContainer } from "../infrastructure/di/setupContainer.js";
 import { Router } from "../infrastructure/http/Router.js";
 import { createAuthMiddleware } from "../api/middleware/authMiddleware.js";
-import { errorHandler } from "../api/middleware/errorHandler.js";
 import { preflightResponse } from "../utils/response.js";
 import { getClientIp } from "../utils/security.js";
 
@@ -219,7 +218,11 @@ export class KeyManagerDurableObject {
       const context = {
         storage: this.state.storage,
         env: this.env,
-        proxyService: this.container.resolve("proxyService"),
+        services: {
+          proxyService: this.container.resolve("proxyService"),
+          logger: this.container.resolve("logger"),
+          errorHandler: this.container.resolve("errorHandler")
+        }
       };
 
       // If rate limiting is available, apply it
@@ -240,18 +243,19 @@ export class KeyManagerDurableObject {
         } catch (error) {
           // If rate limited, return appropriate response
           if (error.name === "RateLimitError") {
-            return errorHandler(error, request);
+            return this.container.resolve("errorHandler")(error, request);
           }
 
           // Otherwise just log the error and continue
-          console.error("Rate limiting error:", error);
+          const logger = this.container.resolve("logger");
+          logger.error("Rate limiting error", { error, path: new URL(request.url).pathname });
         }
       }
 
       return await this.router.handle(request, context);
     } catch (error) {
       // Use the error handler for standardized error responses
-      return errorHandler(error, request);
+      return this.container.resolve("errorHandler")(error, request);
     }
   }
 }

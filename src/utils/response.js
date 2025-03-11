@@ -5,14 +5,20 @@
  * @param {Object} options - Response options
  * @param {number} options.status - HTTP status code (default: 200)
  * @param {Object} options.headers - Additional headers to include
+ * @param {Object} options.config - Optional configuration instance
  * @returns {Response} The formatted response
  */
-export function jsonResponse(data, { status = 200, headers = {} } = {}) {
+export function jsonResponse(data, { status = 200, headers = {}, config = null } = {}) {
+  // Get CORS values from config if available
+  const allowOrigin = config ? config.get('security.cors.allowOrigin', '*') : '*';
+  const allowMethods = config ? config.get('security.cors.allowMethods', 'GET, POST, PUT, DELETE, OPTIONS') : 'GET, POST, PUT, DELETE, OPTIONS';
+  const allowHeaders = config ? config.get('security.cors.allowHeaders', 'Content-Type, Authorization, X-API-Key') : 'Content-Type, Authorization, X-API-Key';
+  
   const responseHeaders = {
     'Content-Type': 'application/json',
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-API-Key',
+    'Access-Control-Allow-Origin': allowOrigin,
+    'Access-Control-Allow-Methods': allowMethods,
+    'Access-Control-Allow-Headers': allowHeaders,
     ...headers
   };
 
@@ -101,27 +107,33 @@ export function rateLimitResponse(retryAfter) {
  * @returns {Response} The method not allowed response
  */
 export function methodNotAllowedResponse(allowedMethods) {
-  return errorResponse(
-    'Method Not Allowed',
-    405,
-    {},
-    { 'Allow': allowedMethods.join(', ') }
-  );
+  return jsonResponse({ 
+    error: 'Method Not Allowed' 
+  }, { 
+    status: 405,
+    headers: { 'Allow': allowedMethods.join(', ') }
+  });
 }
 
 /**
  * Create a CORS preflight response
  * 
+ * @param {Object} config - Optional configuration instance
  * @returns {Response} The preflight response
  */
-export function preflightResponse() {
+export function preflightResponse(config = null) {
+  const allowOrigin = config ? config.get('security.cors.allowOrigin', '*') : '*';
+  const allowMethods = config ? config.get('security.cors.allowMethods', 'GET, POST, PUT, DELETE, OPTIONS') : 'GET, POST, PUT, DELETE, OPTIONS';
+  const allowHeaders = config ? config.get('security.cors.allowHeaders', 'Content-Type, Authorization, X-API-Key') : 'Content-Type, Authorization, X-API-Key';
+  const maxAge = config ? config.get('security.cors.maxAge', 86400) : 86400; // 24 hours
+
   return new Response(null, {
     status: 204,
     headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-API-Key',
-      'Access-Control-Max-Age': '86400', // 24 hours
+      'Access-Control-Allow-Origin': allowOrigin,
+      'Access-Control-Allow-Methods': allowMethods,
+      'Access-Control-Allow-Headers': allowHeaders,
+      'Access-Control-Max-Age': maxAge.toString(),
     }
   });
 }

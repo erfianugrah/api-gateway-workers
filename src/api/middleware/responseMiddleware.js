@@ -5,17 +5,25 @@
  * @returns {Function} Middleware function
  */
 export function createResponseMiddleware(options = {}) {
+  const config = options.config;
+  
+  // Default CORS settings from config if available
+  const defaultCors = {
+    allowOrigin: config ? config.get('security.cors.allowOrigin', '*') : '*',
+    allowMethods: config ? config.get('security.cors.allowMethods', 'GET, POST, PUT, DELETE, OPTIONS') : 'GET, POST, PUT, DELETE, OPTIONS',
+    allowHeaders: config ? config.get('security.cors.allowHeaders', 'Content-Type, Authorization, X-API-Key') : 'Content-Type, Authorization, X-API-Key',
+  };
+  
+  // Default security settings from config if available
+  const defaultSecurity = {
+    contentSecurityPolicy: config ? config.get('security.headers.contentSecurityPolicy', "default-src 'self'") : "default-src 'self'",
+    xFrameOptions: config ? config.get('security.headers.xFrameOptions', 'DENY') : 'DENY',
+    xContentTypeOptions: config ? config.get('security.headers.xContentTypeOptions', 'nosniff') : 'nosniff',
+  };
+  
   const {
-    cors = {
-      allowOrigin: "*",
-      allowMethods: "GET, POST, PUT, DELETE, OPTIONS",
-      allowHeaders: "Content-Type, Authorization, X-API-Key",
-    },
-    security = {
-      contentSecurityPolicy: "default-src 'self'",
-      xFrameOptions: "DENY",
-      xContentTypeOptions: "nosniff",
-    },
+    cors = defaultCors,
+    security = defaultSecurity,
   } = options;
 
   return async (response) => {

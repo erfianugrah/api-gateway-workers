@@ -2,6 +2,7 @@
  * Mock service implementations for testing
  */
 import { createTestKey, createTestAdmin } from '../factories.js';
+import { jest } from '@jest/globals';
 
 /**
  * Create a mock key service
@@ -10,7 +11,7 @@ import { createTestKey, createTestAdmin } from '../factories.js';
  */
 export function createMockKeyService() {
   return {
-    createKey: jest.fn().mockResolvedValue(createTestKey()),
+    createKey: jest.fn().mockImplementation(async (params) => createTestKey(params)),
     getKey: jest.fn().mockResolvedValue(null),
     listKeys: jest.fn().mockResolvedValue({
       items: [],
@@ -62,7 +63,7 @@ export function createMockAuthService(options = {}) {
       authenticated: true,
       admin,
     }),
-    hasPermission: jest.fn().mockReturnValue(permissionGranted),
+    hasPermission: jest.fn().mockImplementation((adminObj, permission) => permissionGranted),
     requirePermission: jest.fn().mockImplementation((adminObj, permission) => {
       if (!permissionGranted) {
         throw new Error(`Permission denied: ${permission}`);
@@ -123,11 +124,11 @@ export function createMockConfig(configValues = {}) {
   const mergedValues = { ...defaultValues, ...configValues };
 
   return {
-    get: jest.fn().mockImplementation((path, defaultValue) => {
+    get: (path, defaultValue) => {
       return mergedValues[path] !== undefined ? mergedValues[path] : defaultValue;
-    }),
-    validate: jest.fn(),
-    isProduction: jest.fn().mockReturnValue(false),
+    },
+    validate: () => {},
+    isProduction: () => false,
   };
 }
 
@@ -137,7 +138,14 @@ export function createMockConfig(configValues = {}) {
  * @returns {Object} Mock audit logger
  */
 export function createMockAuditLogger() {
+  const logs = [];
+  
   return {
-    logAdminAction: jest.fn().mockResolvedValue("test-log-id"),
+    logAdminAction: jest.fn().mockImplementation((adminId, action, details, env, request) => {
+      const logEntry = { adminId, action, details, timestamp: Date.now() };
+      logs.push(logEntry);
+      return Promise.resolve("test-log-id");
+    }),
+    getLogs: jest.fn().mockReturnValue(logs),
   };
 }
