@@ -1,4 +1,4 @@
-import { describe, expect, it } from '@jest/globals';
+import { describe, expect, it, jest } from '@jest/globals';
 import { Config } from '../../../src/infrastructure/config/Config.js';
 
 describe('Config', () => {
@@ -93,6 +93,70 @@ describe('Config', () => {
       const config = new Config({}, {});
       
       expect(() => config.validate()).not.toThrow();
+    });
+    
+    it('should return validation result with isValid flag', () => {
+      const config = new Config({}, {});
+      
+      const result = config.validate(false); // Don't throw on error
+      expect(result).toHaveProperty('isValid');
+      expect(result).toHaveProperty('errors');
+      expect(result.isValid).toBe(true);
+      expect(result.errors).toEqual([]);
+    });
+    
+    it('should detect missing values in production environment', () => {
+      const config = new Config({}, {});
+      
+      // Mock isProduction to return true
+      const originalIsProduction = config.isProduction;
+      config.isProduction = jest.fn().mockReturnValue(true);
+      
+      // Original values have "development" in them, so it should fail validation
+      const result = config.validate(false); // Don't throw on error
+      expect(result.isValid).toBe(false);
+      expect(result.errors.length).toBeGreaterThan(0);
+      expect(result.errors[0]).toContain('cannot use development value');
+      
+      // Restore original function
+      config.isProduction = originalIsProduction;
+    });
+    
+    it('should throw error in production when throwOnError is true', () => {
+      const config = new Config({}, {});
+      
+      // Mock isProduction to return true
+      const originalIsProduction = config.isProduction;
+      config.isProduction = jest.fn().mockReturnValue(true);
+      
+      // Should throw with default throwOnError=true
+      expect(() => config.validate()).toThrow();
+      
+      // Restore original function
+      config.isProduction = originalIsProduction;
+    });
+    
+    it('should pass validation in production with proper values', () => {
+      // Create config with valid production values
+      const config = new Config({
+        encryption: {
+          key: 'secure-production-key-123'
+        },
+        hmac: {
+          secret: 'secure-production-secret-456'
+        }
+      }, {});
+      
+      // Mock isProduction to return true
+      const originalIsProduction = config.isProduction;
+      config.isProduction = jest.fn().mockReturnValue(true);
+      
+      const result = config.validate(false); // Don't throw on error
+      expect(result.isValid).toBe(true);
+      expect(result.errors).toEqual([]);
+      
+      // Restore original function
+      config.isProduction = originalIsProduction;
     });
   });
 

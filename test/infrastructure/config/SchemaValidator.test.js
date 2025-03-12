@@ -51,7 +51,7 @@ describe('SchemaValidator', () => {
     expect(validator.schema).toBe(schema);
   });
   
-  test('should validate config against schema', () => {
+  test('should validate config against schema in development mode', () => {
     const validator = new SchemaValidator(schema);
     const config = {
       test: {
@@ -61,9 +61,79 @@ describe('SchemaValidator', () => {
       }
     };
     
-    const result = validator.validate(config);
+    const result = validator.validate(config, false); // Development mode
     expect(result.isValid).toBe(true);
     expect(result.errors).toEqual([]);
+  });
+  
+  test('should validate config against schema in production mode', () => {
+    // Set up schema for testing production validation
+    const productionSchema = {
+      components: {
+        schemas: {
+          Config: {
+            type: 'object',
+            properties: {
+              encryption: {
+                type: 'object',
+                properties: {
+                  key: {
+                    type: 'string'
+                  }
+                }
+              },
+              hmac: {
+                type: 'object',
+                properties: {
+                  secret: {
+                    type: 'string'
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    };
+    
+    const validator = new SchemaValidator(productionSchema);
+    
+    // Valid production config
+    const validConfig = {
+      encryption: {
+        key: 'secure-key-123'
+      },
+      hmac: {
+        secret: 'secure-secret-456'
+      }
+    };
+    
+    const validResult = validator.validate(validConfig, true); // Production mode
+    expect(validResult.isValid).toBe(true);
+    expect(validResult.errors).toEqual([]);
+    
+    // Invalid production config (missing required fields)
+    const invalidConfig = {
+      encryption: {}
+    };
+    
+    const invalidResult = validator.validate(invalidConfig, true); // Production mode
+    expect(invalidResult.isValid).toBe(false);
+    expect(invalidResult.errors.length).toBeGreaterThan(0);
+    
+    // Invalid production config (development values)
+    const devValuesConfig = {
+      encryption: {
+        key: 'development-key-do-not-use-in-production'
+      },
+      hmac: {
+        secret: 'development-hmac-do-not-use-in-production'
+      }
+    };
+    
+    const devValuesResult = validator.validate(devValuesConfig, true); // Production mode
+    expect(devValuesResult.isValid).toBe(false);
+    expect(devValuesResult.errors.length).toBeGreaterThan(0);
   });
   
   test('should detect validation errors', () => {

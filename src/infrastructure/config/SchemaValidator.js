@@ -25,9 +25,10 @@ export class SchemaValidator {
    * Validate configuration object against schema
    *
    * @param {Object} config - Configuration object to validate
+   * @param {boolean} [isProduction=false] - Whether running in production mode
    * @returns {Object} Validation result with isValid and errors properties
    */
-  validate(config) {
+  validate(config, isProduction = false) {
     // Extract the Config schema from components
     const configSchema = this.schema.components.schemas.Config;
     
@@ -38,12 +39,50 @@ export class SchemaValidator {
       additionalProperties: true
     };
     
+    // In production mode, we can't easily enforce nested required fields in AJV,
+    // so we'll do custom validation after the standard validation
+    
     // Validate using ajv
     const valid = this.ajv.validate(validationSchema, config);
     
+    // Get errors from AJV
+    const errors = this.ajv.errors || [];
+    
+    // Custom validation for production requirements
+    if (isProduction) {
+      // Check for required values in production
+      if (!config.encryption || !config.encryption.key) {
+        errors.push({
+          keyword: 'required',
+          dataPath: '.encryption.key',
+          message: 'encryption.key is required in production'
+        });
+      } else if (config.encryption.key.includes('development')) {
+        errors.push({
+          keyword: 'production',
+          dataPath: '.encryption.key',
+          message: 'should not use development values in production'
+        });
+      }
+      
+      if (!config.hmac || !config.hmac.secret) {
+        errors.push({
+          keyword: 'required',
+          dataPath: '.hmac.secret',
+          message: 'hmac.secret is required in production'
+        });
+      } else if (config.hmac.secret.includes('development')) {
+        errors.push({
+          keyword: 'production',
+          dataPath: '.hmac.secret',
+          message: 'should not use development values in production'
+        });
+      }
+    }
+    
     return {
-      isValid: valid,
-      errors: this.ajv.errors || []
+      isValid: valid && errors.length === 0,
+      errors: errors
     };
   }
   

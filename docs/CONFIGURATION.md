@@ -125,6 +125,25 @@ A typical configuration file might look like this:
 }
 ```
 
+The project includes several example configuration files:
+
+1. `config.example.json` - General example with all configuration options
+2. `config.development.example.json` - Example tailored for development environments
+3. `config.production.example.json` - Example tailored for production environments
+
+To use these examples:
+
+```bash
+# For development
+cp config.development.example.json config.dev.json
+CONFIG_PATH=config.dev.json npm run dev
+
+# For production
+cp config.production.example.json config.prod.json
+# Edit config.prod.json to set secure values
+NODE_ENV=production CONFIG_PATH=config.prod.json npm start
+```
+
 ### Configuration File Structure
 
 ```mermaid
@@ -210,7 +229,7 @@ For situations where you can't or don't want to use a configuration file (like c
 - Use underscores (`_`) to represent nested properties
 - Values are parsed automatically to their appropriate type (string, number, boolean, JSON)
 
-Example:
+### Basic Environment Variable Examples
 
 ```bash
 # Set the logging level
@@ -221,13 +240,132 @@ CONFIG_SECURITY_CORS_ALLOW_ORIGIN=https://your-app.example.com npm run dev
 
 # Configure proxy with a boolean
 CONFIG_PROXY_ENABLED=true npm run dev
+
+# Set a numeric value
+CONFIG_RATELIMIT_DEFAULTLIMIT=200 npm run dev
 ```
 
-JSON values can also be provided via environment variables:
+### Complex Types in Environment Variables
+
+The API Gateway provides advanced handling for complex data structures in environment variables, with special parsing for proxy services, rate limits, and security headers.
+
+#### 1. Using JSON strings
+
+You can provide JSON strings for any complex objects:
 
 ```bash
-CONFIG_PROXY_SERVICES='{"auth":{"target":"https://auth.example.com"}}'
+# Configure proxy services with a JSON object
+CONFIG_PROXY_SERVICES='{"auth":{"target":"https://auth.example.com","timeout":5000},"users":{"target":"https://users.example.com"}}'
+
+# Configure supported API versions with a JSON array
+CONFIG_ROUTING_VERSIONING_SUPPORTED='["1","2","3"]'
+
+# Configure rate limits for endpoints
+CONFIG_RATELIMIT_ENDPOINTS='{"\/api\/keys":{"limit":60,"window":60000},"\/api\/validate":{"limit":300}}'
 ```
+
+#### 2. Using Structured Environment Variables
+
+For complex objects, you can use structured naming patterns that are automatically parsed:
+
+##### Proxy Services Configuration
+
+```bash
+# Configure the "auth" proxy service
+CONFIG_PROXY_SERVICES_AUTH_TARGET=https://auth.example.com
+CONFIG_PROXY_SERVICES_AUTH_TIMEOUT=5000
+CONFIG_PROXY_SERVICES_AUTH_HEADERS='{"X-Internal-Service":"gateway"}'
+CONFIG_PROXY_SERVICES_AUTH_PATHREWRITE='{"^/api/auth":""}'
+
+# Configure the "users" proxy service
+CONFIG_PROXY_SERVICES_USERS_TARGET=https://users.example.com
+CONFIG_PROXY_SERVICES_USERS_TIMEOUT=10000
+```
+
+This automatically creates the following structure:
+
+```javascript
+{
+  proxy: {
+    services: {
+      auth: {
+        target: 'https://auth.example.com',
+        timeout: 5000,
+        headers: { 'X-Internal-Service': 'gateway' },
+        pathRewrite: { '^/api/auth': '' }
+      },
+      users: {
+        target: 'https://users.example.com',
+        timeout: 10000
+      }
+    }
+  }
+}
+```
+
+##### Rate Limit Configuration
+
+```bash
+# Set rate limit for the /api/keys endpoint
+CONFIG_RATELIMIT_ENDPOINTS_API_KEYS_LIMIT=60
+CONFIG_RATELIMIT_ENDPOINTS_API_KEYS_WINDOW=60000
+
+# Set rate limit for the /api/validate endpoint
+CONFIG_RATELIMIT_ENDPOINTS_API_VALIDATE_LIMIT=300
+```
+
+This automatically creates this structure:
+
+```javascript
+{
+  rateLimit: {
+    endpoints: {
+      '/api/keys': {
+        limit: 60,
+        window: 60000
+      },
+      '/api/validate': {
+        limit: 300
+      }
+    }
+  }
+}
+```
+
+##### Security Headers Configuration
+
+```bash
+CONFIG_SECURITY_HEADERS_X_CONTENT_TYPE_OPTIONS=nosniff
+CONFIG_SECURITY_HEADERS_X_FRAME_OPTIONS=DENY
+CONFIG_SECURITY_HEADERS_STRICT_TRANSPORT_SECURITY=max-age=31536000; includeSubDomains
+```
+
+This automatically creates:
+
+```javascript
+{
+  security: {
+    headers: {
+      'X-Content-Type-Options': 'nosniff',
+      'X-Frame-Options': 'DENY',
+      'Strict-Transport-Security': 'max-age=31536000; includeSubDomains'
+    }
+  }
+}
+```
+
+#### Type Conversion
+
+Environment variables are automatically converted to the appropriate type:
+
+| Input | Converted To |
+|--------|-------------|
+| `"true"` | `true` (boolean) |
+| `"false"` | `false` (boolean) |
+| `"42"` | `42` (number) |
+| `"[1,2,3]"` | `[1,2,3]` (array) |
+| `"{"key":"value"}"` | `{key: "value"}` (object) |
+| Other strings | left as strings |
 
 ### Environment Variable Naming Convention
 
@@ -237,7 +375,24 @@ graph TD
     C[CONFIG_SECURITY_CORS_ALLOW_ORIGIN=https://example.com] --> D[security.cors.allowOrigin = 'https://example.com']
     E[CONFIG_PROXY_ENABLED=true] --> F[proxy.enabled = true]
     G[CONFIG_PROXY_SERVICES='{"auth":{"target":"https://auth.example.com"}}'] --> H[proxy.services = {auth: {target: 'https://auth.example.com'}}]
+    I[CONFIG_PROXY_SERVICES_AUTH_TARGET=https://auth.example.com] --> J[proxy.services.auth.target = 'https://auth.example.com']
+    K[CONFIG_RATELIMIT_ENDPOINTS_API_KEYS_LIMIT=60] --> L[rateLimit.endpoints['/api/keys'].limit = 60]
 ```
+
+### Legacy Environment Variables
+
+For backward compatibility, the API Gateway also supports certain legacy environment variables without the `CONFIG_` prefix. However, these are deprecated and should be avoided in new deployments:
+
+```bash
+# Legacy variables (deprecated)
+ENCRYPTION_KEY=your-secure-key
+HMAC_SECRET=your-hmac-secret
+KEY_PREFIX=api_
+RATE_LIMIT=100
+CORS_ALLOW_ORIGIN=*
+```
+
+Always prefer the `CONFIG_` prefixed variables for newer deployments.
 
 ## Configuration Options
 
@@ -348,7 +503,11 @@ flowchart TD
 
 ### Security Configuration
 
-CORS configuration and how it affects browser requests:
+The API Gateway includes comprehensive security features for CORS handling, API key authentication, and security headers.
+
+#### CORS Configuration
+
+CORS (Cross-Origin Resource Sharing) configuration controls how browsers can access your API from different origins:
 
 ```mermaid
 sequenceDiagram
@@ -376,7 +535,61 @@ sequenceDiagram
 | `security.cors.allowMethods` | string | `"GET, POST, PUT, DELETE, OPTIONS"` | Value for Access-Control-Allow-Methods header |
 | `security.cors.allowHeaders` | string | `"Content-Type, Authorization, X-API-Key"` | Value for Access-Control-Allow-Headers header |
 | `security.cors.maxAge` | number | `86400` | Value for Access-Control-Max-Age header in seconds |
+
+#### API Key Configuration
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
 | `security.apiKeyHeader` | string | `"X-API-Key"` | Header name for API key authentication |
+
+#### Security Headers
+
+The API Gateway can add security headers to all responses to improve security posture:
+
+```mermaid
+flowchart LR
+    A[Security Headers Configuration] --> B[Response Processing]
+    B --> C[Add Security Headers to Response]
+    C --> D[Send Response to Client]
+    
+    E[security.headers] --> |Key-Value Pairs| C
+```
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `security.headers` | object | `{}` | Custom security headers to add to all responses |
+
+Example security headers configuration:
+
+```json
+"security": {
+  "headers": {
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+    "X-XSS-Protection": "1; mode=block",
+    "Content-Security-Policy": "default-src 'self'"
+  }
+}
+```
+
+These headers can be configured via environment variables as well:
+
+```bash
+CONFIG_SECURITY_HEADERS_X_CONTENT_TYPE_OPTIONS=nosniff
+CONFIG_SECURITY_HEADERS_X_FRAME_OPTIONS=DENY
+```
+
+Common security headers and their purposes:
+
+| Header | Purpose |
+|--------|---------|
+| `X-Content-Type-Options` | Prevents MIME type sniffing |
+| `X-Frame-Options` | Controls whether page can be displayed in frames |
+| `Strict-Transport-Security` | Enforces HTTPS connections |
+| `X-XSS-Protection` | Enables browser's XSS filtering |
+| `Content-Security-Policy` | Controls allowed resources |
+| `Referrer-Policy` | Controls referrer information |
 
 ### API Routing Configuration
 
@@ -410,6 +623,8 @@ flowchart TD
     style H fill:#fd6,stroke:#333
 ```
 
+#### API Versioning Configuration
+
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
 | `routing.versioning.enabled` | boolean | `true` | Enable API versioning |
@@ -417,9 +632,56 @@ flowchart TD
 | `routing.versioning.supported` | array | `["1"]` | List of supported API versions |
 | `routing.versioning.deprecated` | array | `[]` | List of deprecated API versions |
 | `routing.versioning.versionHeader` | string | `"X-API-Version"` | Header to get API version from |
+
+#### Parameter Validation Configuration
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
 | `routing.paramValidation.id` | string | `"[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"` | Regex pattern for ID parameters |
 | `routing.paramValidation.date` | string | `"\\d{4}-\\d{2}-\\d{2}"` | Regex pattern for date parameters |
 | `routing.paramValidation.status` | string | `"(active\|revoked\|expired)"` | Regex pattern for status parameters |
+
+You can add custom parameter validation patterns by adding new properties to the `routing.paramValidation` object:
+
+```json
+{
+  "routing": {
+    "paramValidation": {
+      "username": "[a-zA-Z0-9_]{3,20}",
+      "email": "[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}"
+    }
+  }
+}
+```
+
+#### Route Priority Configuration
+
+The API Gateway uses a priority system to determine which route should handle a request when multiple routes match the same path pattern. Lower numbers indicate higher priority.
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `routing.priority.exact` | number | `1` | Priority for exact path matches (e.g., `/api/keys`) |
+| `routing.priority.parameter` | number | `2` | Priority for parametrized path matches (e.g., `/api/keys/:id`) |
+| `routing.priority.regex` | number | `3` | Priority for regex path matches (e.g., `/api/keys/.*`) |
+
+```mermaid
+flowchart TD
+    A[Incoming Request: /api/keys/123] --> B{Match Routes}
+    B --> C[Exact: /api/keys/123]
+    B --> D[Parameter: /api/keys/:id]
+    B --> E[Regex: /api/keys/.*]
+    
+    C --> F{Priority Check}
+    D --> F
+    E --> F
+    
+    F --> G[Choose Highest Priority Route]
+    G --> H[Execute Handler]
+    
+    style C fill:#9f9,stroke:#333
+    style D fill:#ff9,stroke:#333
+    style E fill:#f99,stroke:#333
+```
 
 ### Rate Limiting Configuration
 
@@ -467,43 +729,125 @@ Default endpoint-specific rate limits:
 
 ### API Gateway Proxy Configuration
 
-Proxy architecture with circuit breaker:
+The API Gateway includes powerful proxy capabilities for routing requests to upstream services, with built-in circuit breaker and retry functionality for resilience.
+
+#### Proxy Architecture with Circuit Breaker
 
 ```mermaid
 flowchart LR
     A[Client] --> B[API Gateway]
     B --> C{Circuit Breaker}
     C -->|Open| D[Return 503]
-    C -->|Closed| E[Upstream Service]
-    E -->|Success| F[Response to Client]
-    E -->|Error| G{Retry?}
-    G -->|Yes| E
-    G -->|No| H[Error Response]
+    C -->|Closed| E{Route Matching}
+    E -->|Found| F[Service Selection]
+    E -->|Not Found| G[404 Not Found]
     
-    I[Configuration] --> J[Timeout]
-    I --> K[Circuit Breaker]
-    I --> L[Retry Logic]
+    F --> H[Apply Path Rewrite]
+    H --> I[Add Headers]
+    I --> J[Set Timeout]
+    J --> K[Upstream Service]
     
-    J --> B
-    K --> C
-    L --> G
+    K -->|Success| L[Response to Client]
+    K -->|Error| M{Retry?}
+    M -->|Yes| N[Backoff]
+    N --> K
+    M -->|No| O[Error Response]
+    
+    P[Configuration] --> Q[Default Timeout]
+    P --> R[Circuit Breaker Settings]
+    P --> S[Retry Settings]
+    P --> T[Service Routes]
+    
+    Q --> J
+    R --> C
+    S --> M
+    T --> E
     
     style D fill:#f96,stroke:#333
-    style H fill:#f96,stroke:#333
+    style G fill:#f96,stroke:#333
+    style O fill:#f96,stroke:#333
 ```
+
+#### Proxy Service Selection and Path Rewriting
+
+```mermaid
+flowchart TD
+    A[Request: /api/auth/login] --> B{Match Service}
+    B -->|Match| C[Service: auth]
+    
+    C --> D[Apply Path Rewrite]
+    D -->|/^\/api\/auth/ -> ""| E[Rewritten Path: /login]
+    
+    E --> F[Construct URL]
+    F -->|Target URL + Rewritten Path| G[https://auth-service.example.com/login]
+    
+    H[Request: /api/users/123] --> I{Match Service}
+    I -->|Match| J[Service: users]
+    
+    J --> K[Apply Path Rewrite]
+    K -->|No Rewrite Rules| L[Rewritten Path: /api/users/123]
+    
+    L --> M[Construct URL]
+    M -->|Target URL + Rewritten Path| N[https://user-service.example.com/api/users/123]
+    
+    style G fill:#9cf,stroke:#333
+    style N fill:#9cf,stroke:#333
+```
+
+#### Core Proxy Configuration
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
 | `proxy.enabled` | boolean | `false` | Enable proxy functionality |
 | `proxy.timeout` | number | `30000` | Default timeout for proxied requests in milliseconds |
 | `proxy.headers` | object | `{"X-Forwarded-By":"key-manager-gateway"}` | Default headers to add to proxied requests |
+
+#### Circuit Breaker Configuration
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
 | `proxy.circuitBreaker.enabled` | boolean | `true` | Enable circuit breaker functionality |
 | `proxy.circuitBreaker.failureThreshold` | number | `5` | Number of failures before opening the circuit |
 | `proxy.circuitBreaker.resetTimeout` | number | `30000` | Time in milliseconds before attempting to close the circuit |
+
+#### Retry Configuration
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
 | `proxy.retry.enabled` | boolean | `true` | Enable request retry functionality |
 | `proxy.retry.maxAttempts` | number | `3` | Maximum number of retry attempts |
-| `proxy.retry.backoff` | number | `1000` | Initial backoff in milliseconds |
-| `proxy.services` | object | `{}` | Upstream service configurations for proxying |
+| `proxy.retry.backoff` | number | `1000` | Initial backoff in milliseconds (doubles with each retry) |
+
+#### Service Configuration
+
+The `proxy.services` object contains configurations for upstream services:
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `proxy.services.<name>` | object | Configuration for an upstream service |
+| `proxy.services.<name>.target` | string | Target URL for the service (required) |
+| `proxy.services.<name>.pathRewrite` | object | Path rewrite rules (regex pattern to replacement) |
+| `proxy.services.<name>.headers` | object | Headers to add to requests for this service |
+| `proxy.services.<name>.timeout` | number | Service-specific timeout in milliseconds |
+
+Example service configuration:
+
+```json
+"proxy": {
+  "services": {
+    "auth": {
+      "target": "https://auth-service.example.com",
+      "pathRewrite": {
+        "^/api/auth": ""
+      },
+      "headers": {
+        "X-Internal-Service": "gateway"
+      },
+      "timeout": 10000
+    }
+  }
+}
+```
 
 ## Environment-Specific Configurations
 
@@ -563,20 +907,67 @@ CONFIG_PATH=config.dev.json npm run dev
 
 ### Production Environment
 
-In production, you should set the required secure values via environment variables:
+For production deployments, stricter validation is applied to ensure secure configuration. The following secure values are **required** in production:
 
 ```bash
-# Required secure values
+# Required secure values (MUST be set in production)
 CONFIG_ENCRYPTION_KEY=your-secure-encryption-key
 CONFIG_HMAC_SECRET=your-secure-hmac-secret
 
-# Production-specific settings
+# Production-specific settings (recommended)
 CONFIG_LOGGING_LEVEL=error
 CONFIG_LOGGING_INCLUDE_TRACE=false
 CONFIG_SECURITY_CORS_ALLOW_ORIGIN=https://your-production-app.com
 
+# Enable production mode validation
+NODE_ENV=production
+
 # Start the application
 npm run start
+```
+
+#### Production Validation Rules
+
+The API Gateway enforces these rules in production mode:
+
+1. `encryption.key` and `hmac.secret` must be explicitly set
+2. Default development values (containing "development") are rejected
+3. Validation errors for critical security settings will cause startup failure
+
+If your application fails to start in production with an error like:
+
+```
+Production configuration validation failed: [{"keyword":"required","dataPath":".encryption.key","message":"encryption.key is required in production"}]
+```
+
+You need to set the required configuration values before the application will start.
+
+#### Security Settings For Production
+
+For a secure production deployment, we recommend:
+
+```bash
+# Encryption and HMAC (required)
+CONFIG_ENCRYPTION_KEY=<strong-random-key>
+CONFIG_HMAC_SECRET=<strong-random-secret>
+
+# Security headers
+CONFIG_SECURITY_HEADERS_STRICT_TRANSPORT_SECURITY=max-age=31536000; includeSubDomains
+CONFIG_SECURITY_HEADERS_X_CONTENT_TYPE_OPTIONS=nosniff
+CONFIG_SECURITY_HEADERS_X_FRAME_OPTIONS=DENY
+CONFIG_SECURITY_HEADERS_X_XSS_PROTECTION=1; mode=block
+
+# CORS (restrict to your domains)
+CONFIG_SECURITY_CORS_ALLOW_ORIGIN=https://your-app.example.com
+CONFIG_SECURITY_CORS_ALLOW_METHODS=GET, POST, PUT, DELETE, OPTIONS
+
+# Logging (minimal in production)
+CONFIG_LOGGING_LEVEL=error
+CONFIG_LOGGING_INCLUDE_TRACE=false
+
+# Rate limiting (stricter in production)
+CONFIG_RATELIMIT_DEFAULTLIMIT=50
+CONFIG_RATELIMIT_ENDPOINTS_API_VALIDATE_LIMIT=200
 ```
 
 ## Secrets Management
@@ -630,23 +1021,146 @@ sequenceDiagram
     Validator->>Schema: Get schema definition
     Schema-->>Validator: Return schema
     
-    alt Valid configuration
-        Validator-->>Config: Configuration valid
-        Config-->>App: Return valid config
-    else Invalid configuration in development
-        Validator-->>Config: Validation warnings
-        Config-->>App: Return with warnings
-        App->>App: Log warnings, use defaults
-    else Invalid required fields in production
-        Validator-->>Config: Validation errors
-        Config-->>App: Return with errors
-        App->>App: Reject requests, log errors
+    Note over Validator: Check environment mode
+    
+    alt Development mode
+        Validator->>Validator: Apply standard validation
+        
+        alt Valid configuration
+            Validator-->>Config: Configuration valid
+            Config-->>App: Return valid config
+        else Invalid configuration
+            Validator-->>Config: Validation warnings
+            Config-->>App: Return with warnings
+            App->>App: Log warnings, use defaults
+        end
+    else Production mode
+        Validator->>Validator: Apply strict validation
+        Validator->>Validator: Check required fields
+        Validator->>Validator: Check for development values
+        
+        alt Valid production configuration
+            Validator-->>Config: Configuration valid
+            Config-->>App: Return valid config
+        else Missing required fields
+            Validator-->>Config: Critical validation errors
+            Config->>App: Throw validation exception
+            App->>App: Fail startup
+        else Development values in production
+            Validator-->>Config: Security validation errors
+            Config->>App: Throw validation exception
+            App->>App: Fail startup
+        end
     end
 ```
 
-If invalid configuration is provided, warnings will be logged and default values will be used when possible.
+### Development Mode Validation
 
-In production mode, validation for required security values like `encryption.key` and `hmac.secret` will cause the application to reject requests if these values are missing.
+In development mode, validation is permissive:
+
+1. All schema rules are checked but treated as warnings
+2. Missing values get default values from the schema
+3. Type mismatches are logged but don't prevent startup
+4. Configuration warnings are logged to the console
+
+### Production Mode Validation
+
+In production mode, validation is strict for security-critical settings:
+
+1. Required fields must be present (`encryption.key` and `hmac.secret`)
+2. Development placeholder values are rejected
+3. Critical validation errors will cause application startup to fail
+4. Non-critical validation issues are still logged as warnings
+
+### Detecting Production Mode
+
+The system detects production mode using environment variables:
+
+1. If `NODE_ENV` is set to `"production"`, production mode is enabled
+2. If `CONFIG_ENV` is set to `"production"`, production mode is enabled
+3. Otherwise, development mode is used
+
+### Validation Rules
+
+The validation system checks:
+
+1. **Type validation**: Ensures values match their expected types
+2. **Required fields**: In production, checks security-critical fields are present
+3. **Development values**: Prevents placeholder values in production
+4. **Schema conformance**: Ensures all values conform to the schema rules
+
+### Error Handling
+
+When validation errors occur:
+
+1. **Development mode**: Warnings logged to console, defaults used
+2. **Production mode**: Critical errors throw exceptions, application startup fails
+3. **Runtime validation**: Config.validate() can be called at runtime to check configuration
+
+### Programmatic Configuration Validation
+
+You can validate configuration at runtime using the Config class:
+
+```javascript
+import { Config } from './src/infrastructure/config/Config.js';
+
+// Create a config instance
+const config = new Config(configValues);
+
+try {
+  // Validate with default behavior (throws in production)
+  config.validate();
+  console.log("Configuration is valid");
+} catch (error) {
+  console.error("Configuration validation failed:", error.message);
+  process.exit(1);
+}
+
+// Or get validation results without throwing
+const { isValid, errors } = config.validate(false);
+if (!isValid) {
+  console.warn("Configuration warnings:", errors);
+}
+```
+
+This is useful for:
+
+- Custom startup scripts that need to validate configuration
+- Health checks that verify configuration is still valid
+- Admin tools that need to validate configuration changes
+
+### Maintenance Configuration
+
+The API Gateway includes built-in maintenance operations for cleaning up expired keys and performing other system tasks.
+
+```mermaid
+flowchart TD
+    A[Durable Object Lifecycle] --> B[Alarm Trigger]
+    B --> C{Maintenance Due?}
+    C -->|Yes| D[Run Cleanup]
+    C -->|No| E[Skip]
+    
+    D --> F{Success?}
+    F -->|Yes| G[Schedule Next Run]
+    F -->|No| H[Schedule Retry]
+    
+    G --> I[Update Last Maintenance Time]
+    H --> J[Log Error]
+    
+    J --> K[Schedule Retry]
+    I --> L[Wait for Next Trigger]
+    K --> L
+    
+    style D fill:#9cf,stroke:#333
+    style H fill:#f96,stroke:#333
+```
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `maintenance.cleanupIntervalHours` | number | `24` | Interval in hours between cleanup operations |
+| `maintenance.retryIntervalHours` | number | `1` | Interval in hours before retrying a failed cleanup |
+
+The maintenance operations run automatically in the background and do not require any user intervention. However, you can configure the frequency of these operations to match your system's needs.
 
 ## Advanced Configuration Examples
 

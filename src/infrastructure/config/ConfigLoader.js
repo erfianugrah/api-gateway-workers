@@ -26,6 +26,9 @@ export class ConfigLoader {
     // Start with an empty config
     const config = {};
     
+    // Determine if we're in production mode
+    const isProduction = this.isProduction(env);
+    
     // Helper function to create nested objects from dot notation
     const setValue = (obj, path, value) => {
       const parts = path.split('.');
@@ -77,8 +80,8 @@ export class ConfigLoader {
     // Process special case environment variables for complex objects
     this.processComplexEnvVars(env, config);
     
-    // Apply defaults and validate
-    return this.processConfig(config);
+    // Apply defaults and validate with production flag
+    return this.processConfig(config, isProduction);
   }
   
   /**
@@ -214,9 +217,10 @@ export class ConfigLoader {
    * Load configuration from a file
    *
    * @param {string} filePath - Path to configuration file
+   * @param {boolean} [isProduction=false] - Whether running in production mode
    * @returns {Object} Configuration object
    */
-  loadFromFile(filePath) {
+  loadFromFile(filePath, isProduction = false) {
     try {
       // Check if file exists
       if (!fs.existsSync(filePath)) {
@@ -234,8 +238,8 @@ export class ConfigLoader {
         throw new Error(`Unsupported configuration file type: ${extension}`);
       }
       
-      // Apply defaults and validate
-      return this.processConfig(config);
+      // Apply defaults and validate with production flag
+      return this.processConfig(config, isProduction);
     } catch (error) {
       throw new Error(`Failed to load configuration: ${error.message}`);
     }
@@ -253,10 +257,13 @@ export class ConfigLoader {
   load({ env, filePath, defaults = {} } = {}) {
     let config = { ...defaults };
     
+    // Determine if we're in production mode
+    const isProduction = this.isProduction(env);
+    
     // Load from file if provided
     if (filePath) {
       try {
-        const fileConfig = this.loadFromFile(filePath);
+        const fileConfig = this.loadFromFile(filePath, isProduction);
         config = this.mergeConfigs(config, fileConfig);
       } catch (error) {
         console.warn(`Warning: ${error.message}`);
@@ -269,8 +276,8 @@ export class ConfigLoader {
       config = this.mergeConfigs(config, envConfig);
     }
     
-    // Apply defaults and validate
-    return this.processConfig(config);
+    // Apply defaults and validate, with production flag
+    return this.processConfig(config, isProduction);
   }
   
   /**
@@ -307,20 +314,48 @@ export class ConfigLoader {
    * Process configuration by applying defaults and validating
    *
    * @param {Object} config - Configuration object
+   * @param {boolean} [isProduction=false] - Whether running in production mode
    * @returns {Object} Processed configuration object
+   * @throws {Error} If validation fails in production mode
    */
-  processConfig(config) {
+  processConfig(config, isProduction = false) {
     // Apply defaults from the schema
     const withDefaults = this.validator.applyDefaults(config);
     
     // Validate the configuration
-    const { isValid, errors } = this.validator.validate(withDefaults);
+    const { isValid, errors } = this.validator.validate(withDefaults, isProduction);
     
-    // Log validation errors but don't fail
+    // Handle validation errors
     if (!isValid) {
-      console.warn('Configuration validation errors:', errors);
+      if (isProduction) {
+        // In production, fail with an error for critical validation failures
+        const criticalErrors = errors.filter(err => 
+          err.dataPath?.includes('encryption.key') || 
+          err.dataPath?.includes('hmac.secret') ||
+          err.keyword === 'production'
+        );
+        
+        if (criticalErrors.length > 0) {
+          throw new Error(`Production configuration validation failed: ${JSON.stringify(criticalErrors)}`);
+        }
+      }
+      
+      // Log validation errors 
+      console.warn('Configuration validation warnings:', errors);
     }
     
     return withDefaults;
+  }
+  
+  /**
+   * Detect if running in production mode
+   * 
+   * @param {Object} env - Environment variables
+   * @returns {boolean} True if running in production
+   * @private
+   */
+  isProduction(env = {}) {
+    return env.NODE_ENV === 'production' || 
+           env.CONFIG_ENV === 'production';
   }
 }

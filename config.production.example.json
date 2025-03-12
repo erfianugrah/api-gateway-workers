@@ -1,11 +1,11 @@
 {
   "encryption": {
-    "key": "your-secure-encryption-key",
+    "key": "YOUR_SECURE_ENCRYPTION_KEY_REQUIRED_IN_PRODUCTION",
     "algorithm": "AES-GCM",
     "iterations": 100000
   },
   "hmac": {
-    "secret": "your-secure-hmac-secret",
+    "secret": "YOUR_SECURE_HMAC_SECRET_REQUIRED_IN_PRODUCTION",
     "algorithm": "SHA-384"
   },
   "keys": {
@@ -17,7 +17,7 @@
     "maxScopes": 50
   },
   "logging": {
-    "level": "info",
+    "level": "error",
     "includeTrace": false,
     "requestIdHeader": "X-Request-ID"
   },
@@ -39,12 +39,12 @@
     }
   },
   "rateLimit": {
-    "defaultLimit": 100,
+    "defaultLimit": 50,
     "defaultWindow": 60000,
     "endpoints": {
-      "/validate": { "limit": 300 },
-      "/keys": { "limit": 60 },
-      "/api/users": { "limit": 50, "window": 30000 }
+      "/validate": { "limit": 200 },
+      "/keys": { "limit": 30 },
+      "/api/users": { "limit": 25, "window": 30000 }
     },
     "headers": {
       "limit": "X-RateLimit-Limit",
@@ -90,19 +90,19 @@
     },
     "services": {
       "userService": {
-        "target": "https://users-api.example.com",
+        "target": "https://users-internal.example.com",
         "pathRewrite": {
-          "^/api/users": "/v2/users"
+          "^/api/users": ""
         },
         "headers": {
-          "X-Service-Key": "your-service-key"
+          "X-Internal-Service": "gateway"
         },
         "timeout": 10000
       },
-      "productService": {
-        "target": "https://products-api.example.com",
+      "authService": {
+        "target": "https://auth-internal.example.com",
         "pathRewrite": {
-          "^/api/products": "/v1/products"
+          "^/api/auth": ""
         }
       }
     }

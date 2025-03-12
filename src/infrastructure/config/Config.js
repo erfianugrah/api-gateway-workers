@@ -358,10 +358,13 @@ export class Config {
   /**
    * Validate critical configuration values
    *
-   * @throws {Error} If required configuration is missing
+   * @param {boolean} [throwOnError=true] - Whether to throw errors or just return validation status
+   * @returns {Object} Validation result with isValid and errors properties 
+   * @throws {Error} If required configuration is missing and throwOnError is true
    */
-  validate() {
+  validate(throwOnError = true) {
     const isProduction = this.isProduction();
+    const errors = [];
 
     // Keys that must be set in production
     const requiredInProduction = [
@@ -372,13 +375,23 @@ export class Config {
     if (isProduction) {
       for (const path of requiredInProduction) {
         const value = this.get(path);
-        if (!value || value.includes("development")) {
-          throw new Error(
-            `Production configuration error: ${path} must be set`,
-          );
+        if (!value) {
+          errors.push(`Production configuration error: ${path} is required but missing`);
+        } else if (value.includes("development")) {
+          errors.push(`Production configuration error: ${path} cannot use development value`);
         }
       }
+      
+      // Check if we need to throw errors
+      if (errors.length > 0 && throwOnError) {
+        throw new Error(errors.join('; '));
+      }
     }
+    
+    return {
+      isValid: errors.length === 0,
+      errors: errors
+    };
   }
 
   /**

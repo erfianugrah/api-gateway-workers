@@ -322,40 +322,51 @@ CONFIG_LOGGING_LEVEL=debug CONFIG_SECURITY_API_KEY_HEADER=X-Custom-Key npm run d
 
 Environment variables use underscore notation and are converted to the appropriate nested structure.
 
-#### Configuration Options
+#### Configuration System
+
+The API Gateway includes a comprehensive configuration system with:
+
+- **OpenAPI Schema Validation**: All configuration is validated against an OpenAPI schema
+- **Environment Detection**: Different validation rules for development and production
+- **Multiple Configuration Sources**: 
+  - JSON configuration files
+  - Environment variables with `CONFIG_` prefix
+  - Default values from schema
+- **Complex Type Support**: Structured environment variables for complex objects
+- **Production Safeguards**: Prevents insecure configurations in production
 
 ##### Core Configuration
 - `encryption.key`: Secret key for encrypting API keys at rest (required in production)
 - `hmac.secret`: Secret for generating HMAC signatures (required in production)
 
-##### Logging Configuration
-- `logging.level`: Sets logging verbosity (`error`, `warn`, `info`, `debug`, `trace`)
-- `logging.includeTrace`: Include stack traces in error logs (`true`/`false`)
-- `logging.requestIdHeader`: Header to extract request ID from (default: `X-Request-ID`)
-
 ##### Security Configuration
-- `security.cors.allowOrigin`: Value for Access-Control-Allow-Origin header (default: `*`)
-- `security.cors.allowMethods`: Value for Access-Control-Allow-Methods header
-- `security.cors.allowHeaders`: Value for Access-Control-Allow-Headers header
-- `security.apiKeyHeader`: Header name for API key authentication (default: `X-API-Key`)
+- `security.cors`: CORS settings (origin, methods, headers, etc.)
+- `security.apiKeyHeader`: Header name for API key authentication
+- `security.headers`: Security headers added to all responses
 
 ##### API Configuration
-- `routing.versioning.enabled`: Enable/disable API versioning (default: true)
-- `routing.versioning.current`: Current API version (default: "1")
-- `routing.versioning.supported`: Array of supported versions (default: ["1"])
-- `routing.versioning.deprecated`: Array of deprecated versions
-- `routing.versioning.versionHeader`: Header for API version (default: "X-API-Version")
-- `routing.versioning.format`: Format for version in URL (default: "/v${version}")
+- `routing.versioning`: API version management
+- `routing.paramValidation`: Regular expressions for parameter validation
+- `routing.priority`: Route matching priority configuration
 
 ##### Proxy Configuration
-- `proxy.enabled`: Enable/disable proxy functionality (default: false)
-- `proxy.timeout`: Default timeout in milliseconds for proxied requests (default: 30000)
-- `proxy.retry.enabled`: Enable/disable retry mechanism (default: true)
-- `proxy.retry.maxAttempts`: Maximum retry attempts (default: 3)
-- `proxy.circuitBreaker.enabled`: Enable/disable circuit breaker (default: true)
-- `proxy.services`: Object defining upstream services for proxying
+- `proxy.enabled`: Enable/disable proxy functionality
+- `proxy.timeout`: Default timeout for proxied requests
+- `proxy.retry`: Controls for retrying failed requests
+- `proxy.circuitBreaker`: Circuit breaker pattern for fault tolerance
+- `proxy.services`: Upstream service configurations
 
-Configuration is validated against an OpenAPI schema defined in `schemas/config.schema.json`.
+##### Additional Settings
+- `logging`: Log levels, stack traces, and request tracking
+- `rateLimit`: Request rate limiting with per-endpoint configuration
+- `maintenance`: Scheduled tasks and maintenance operations
+
+Example Configuration Files:
+- `config.example.json`: General example with all options
+- `config.development.example.json`: Development environment settings
+- `config.production.example.json`: Production environment settings 
+
+For complete details, see the [Configuration Guide](./docs/CONFIGURATION.md) and [Environment Variables Cheatsheet](./docs/env-vars-cheatsheet.md).
 
 ### Deployment Steps
 
@@ -466,6 +477,8 @@ Detailed documentation is available in the `docs/` folder:
 - [API Reference](./docs/API.md) - Detailed API documentation
 - [Gateway Features](./docs/GATEWAY.md) - API Gateway functionality and implementation
 - [Configuration Guide](./docs/CONFIGURATION.md) - Comprehensive configuration options
+- [Environment Variables Cheatsheet](./docs/env-vars-cheatsheet.md) - Quick reference for configuration variables
+- [Configuration Roadmap](./docs/CONFIGURATION_ROADMAP.md) - Future plans for configuration system
 - [Architecture](./docs/ARCHITECTURE.md) - System design and component interaction
 - [Security Implementation](./docs/SECURITY.md) - Security features and considerations
 - [Quick Start Guide](./docs/QUICKSTART.md) - Get up and running quickly
