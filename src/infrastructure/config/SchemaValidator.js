@@ -67,18 +67,38 @@ export class SchemaValidator {
         
         // If property doesn't exist in target, but has a default in schema
         if (targetObj[key] === undefined && propSchema.default !== undefined) {
-          targetObj[key] = JSON.parse(JSON.stringify(propSchema.default));
+          if (typeof propSchema.default === 'object' && propSchema.default !== null) {
+            targetObj[key] = JSON.parse(JSON.stringify(propSchema.default));
+          } else {
+            targetObj[key] = propSchema.default;
+          }
         }
         
-        // If it's an object, recurse
-        if (propSchema.type === 'object' && propSchema.properties) {
+        // Handle objects
+        if (propSchema.type === 'object') {
           // Create the object if it doesn't exist
           if (!targetObj[key]) {
             targetObj[key] = {};
           }
           
-          // Apply defaults to nested objects
-          applyDefaultsToObject(propSchema, targetObj[key], currentPath);
+          // For additionalProperties (like endpoints, services, etc.)
+          if (propSchema.additionalProperties && !propSchema.properties) {
+            // Initialize with an empty object
+            if (targetObj[key] === undefined) {
+              targetObj[key] = {};
+            }
+          }
+          
+          // If it has defined properties, recurse
+          if (propSchema.properties) {
+            // Apply defaults to nested objects
+            applyDefaultsToObject(propSchema, targetObj[key], currentPath);
+          }
+        }
+        
+        // Handle arrays
+        if (propSchema.type === 'array' && propSchema.default && targetObj[key] === undefined) {
+          targetObj[key] = [...propSchema.default];
         }
       });
     };

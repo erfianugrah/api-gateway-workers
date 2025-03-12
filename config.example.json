@@ -1,7 +1,8 @@
 {
   "encryption": {
     "key": "your-secure-encryption-key",
-    "algorithm": "AES-GCM"
+    "algorithm": "AES-GCM",
+    "iterations": 100000
   },
   "hmac": {
     "secret": "your-secure-hmac-secret",
@@ -9,7 +10,11 @@
   },
   "keys": {
     "prefix": "km_",
-    "defaultExpirationDays": 90
+    "defaultExpirationDays": 90,
+    "maxNameLength": 255,
+    "maxOwnerLength": 255,
+    "maxScopeLength": 100,
+    "maxScopes": 50
   },
   "logging": {
     "level": "info",
@@ -20,15 +25,27 @@
     "cors": {
       "allowOrigin": "https://your-app.example.com",
       "allowMethods": "GET, POST, PUT, DELETE, OPTIONS",
-      "allowHeaders": "Content-Type, Authorization, X-API-Key, X-Request-ID"
+      "allowHeaders": "Content-Type, Authorization, X-API-Key, X-Request-ID",
+      "maxAge": 86400
     },
-    "apiKeyHeader": "X-API-Key"
+    "apiKeyHeader": "X-API-Key",
+    "headers": {
+      "X-Content-Type-Options": "nosniff",
+      "X-Frame-Options": "DENY"
+    }
   },
   "rateLimit": {
     "defaultLimit": 100,
+    "defaultWindow": 60000,
     "endpoints": {
       "/validate": { "limit": 300 },
-      "/keys": { "limit": 60 }
+      "/keys": { "limit": 60 },
+      "/api/users": { "limit": 50, "window": 30000 }
+    },
+    "headers": {
+      "limit": "X-RateLimit-Limit",
+      "remaining": "X-RateLimit-Remaining",
+      "reset": "X-RateLimit-Reset"
     }
   },
   "routing": {
@@ -36,16 +53,36 @@
       "enabled": true,
       "current": "1",
       "supported": ["1", "2"],
-      "deprecated": []
+      "deprecated": [],
+      "versionHeader": "X-API-Version"
+    },
+    "paramValidation": {
+      "id": "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
+      "date": "\\d{4}-\\d{2}-\\d{2}",
+      "status": "(active|revoked|expired)",
+      "customParam": "[a-z]+"
+    },
+    "priority": {
+      "exact": 1,
+      "parameter": 2,
+      "regex": 3
     }
   },
   "proxy": {
     "enabled": true,
     "timeout": 5000,
+    "headers": {
+      "X-Forwarded-By": "key-manager-gateway"
+    },
     "circuitBreaker": {
       "enabled": true,
       "failureThreshold": 5,
       "resetTimeout": 30000
+    },
+    "retry": {
+      "enabled": true,
+      "maxAttempts": 3,
+      "backoff": 1000
     },
     "services": {
       "userService": {
@@ -55,7 +92,8 @@
         },
         "headers": {
           "X-Service-Key": "your-service-key"
-        }
+        },
+        "timeout": 10000
       },
       "productService": {
         "target": "https://products-api.example.com",
@@ -64,5 +102,9 @@
         }
       }
     }
+  },
+  "maintenance": {
+    "cleanupIntervalHours": 24,
+    "retryIntervalHours": 1
   }
 }

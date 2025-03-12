@@ -71,4 +71,58 @@ export class ConfigFactory {
     
     return paths;
   }
+  
+  /**
+   * Create a configuration object for documentation purposes
+   * This doesn't create a full Config instance but just returns the raw
+   * configuration object with all defaults applied
+   * 
+   * @returns {Object} Configuration with all defaults applied
+   */
+  createDocumentationConfig() {
+    return this.loader.processConfig({});
+  }
+  
+  /**
+   * Get available environment variables for configuring
+   * based on the schema
+   * 
+   * @returns {Array} Array of environment variable details
+   */
+  getEnvironmentVariables() {
+    const configSchema = this.schema.components.schemas.Config;
+    const vars = [];
+    
+    // Helper to process a schema property
+    const processProperty = (propPath, propSchema, parentKey = '') => {
+      if (!propSchema || !propSchema.properties) return;
+      
+      // For each property in this object
+      Object.entries(propSchema.properties).forEach(([propName, schema]) => {
+        const path = propPath ? `${propPath}.${propName}` : propName;
+        const envVar = parentKey 
+          ? `${parentKey}_${propName.toUpperCase()}`
+          : `CONFIG_${propName.toUpperCase()}`;
+          
+        // Add this property
+        vars.push({
+          path,
+          envVar,
+          description: schema.description || '',
+          default: schema.default,
+          type: schema.type
+        });
+        
+        // Process nested properties
+        if (schema.properties) {
+          processProperty(path, schema, envVar);
+        }
+      });
+    };
+    
+    // Process all top-level properties
+    processProperty('', configSchema);
+    
+    return vars;
+  }
 }

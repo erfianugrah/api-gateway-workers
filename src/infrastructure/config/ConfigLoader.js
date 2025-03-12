@@ -46,8 +46,8 @@ export class ConfigLoader {
       // Skip non-configuration variables
       if (!key.startsWith('CONFIG_')) return;
       
-      // Remove CONFIG_ prefix and convert to lowercase
-      const configKey = key.substring(7).toLowerCase();
+      // Remove CONFIG_ prefix and convert to lowercase with dots
+      const configKey = key.substring(7).toLowerCase().replace(/_/g, '.');
       
       // Convert to the appropriate type
       let typedValue = value;
@@ -59,6 +59,14 @@ export class ConfigLoader {
           typedValue = JSON.parse(value);
         } catch {
           // If parsing fails, keep as string
+          
+          // Convert boolean string values
+          if (value === 'true') typedValue = true;
+          else if (value === 'false') typedValue = false;
+          // Convert number string values
+          else if (!isNaN(Number(value)) && value.trim() !== '') {
+            typedValue = Number(value);
+          }
         }
       }
       
@@ -66,8 +74,140 @@ export class ConfigLoader {
       setValue(config, configKey, typedValue);
     });
     
+    // Process special case environment variables for complex objects
+    this.processComplexEnvVars(env, config);
+    
     // Apply defaults and validate
     return this.processConfig(config);
+  }
+  
+  /**
+   * Process special case environment variables for complex objects
+   * 
+   * @param {Object} env - Environment variables
+   * @param {Object} config - Config object being built
+   * @private
+   */
+  processComplexEnvVars(env, config) {
+    // Handle proxy services
+    const serviceKeys = Object.keys(env).filter(key => 
+      key.startsWith('CONFIG_PROXY_SERVICES_') && 
+      key.split('_').length > 3
+    );
+    
+    if (serviceKeys.length > 0) {
+      // Ensure proxy.services exists
+      if (!config.proxy) config.proxy = {};
+      if (!config.proxy.services) config.proxy.services = {};
+      
+      // Group keys by service name
+      const serviceGroups = {};
+      serviceKeys.forEach(key => {
+        // Extract service name and property from key
+        // CONFIG_PROXY_SERVICES_USERSERVICE_TARGET -> 'userservice', 'target'
+        const parts = key.split('_');
+        const serviceName = parts[3].toLowerCase();
+        const property = parts.slice(4).join('_').toLowerCase();
+        
+        if (!serviceGroups[serviceName]) {
+          serviceGroups[serviceName] = [];
+        }
+        serviceGroups[serviceName].push({ key, property });
+      });
+      
+      // Process each service
+      Object.keys(serviceGroups).forEach(serviceName => {
+        config.proxy.services[serviceName] = {};
+        
+        serviceGroups[serviceName].forEach(({ key, property }) => {
+          let value = env[key];
+          
+          // Try to parse as JSON for objects like pathRewrite
+          try {
+            if (value.startsWith('{') || value.startsWith('[')) {
+              value = JSON.parse(value);
+            } else if (value === 'true') {
+              value = true;
+            } else if (value === 'false') {
+              value = false;
+            } else if (!isNaN(Number(value)) && value !== '') {
+              value = Number(value);
+            }
+          } catch {
+            // Keep as string if JSON parsing fails
+          }
+          
+          // Set property in lowercase with camelCase
+          const camelProperty = property.toLowerCase().replace(/_([a-z])/g, (m, p1) => p1.toUpperCase());
+          config.proxy.services[serviceName][camelProperty] = value;
+        });
+      });
+    }
+    
+    // Handle rate limit endpoints
+    const rateLimitKeys = Object.keys(env).filter(key => 
+      key.startsWith('CONFIG_RATELIMIT_ENDPOINTS_') && 
+      key.split('_').length > 3
+    );
+    
+    if (rateLimitKeys.length > 0) {
+      // Ensure rateLimit.endpoints exists
+      if (!config.rateLimit) config.rateLimit = {};
+      if (!config.rateLimit.endpoints) config.rateLimit.endpoints = {};
+      
+      // Group keys by endpoint path
+      const endpointGroups = {};
+      rateLimitKeys.forEach(key => {
+        // Extract endpoint path and property from key
+        // CONFIG_RATELIMIT_ENDPOINTS_API_KEYS_LIMIT -> '/api/keys', 'limit'
+        const parts = key.split('_');
+        const endpointParts = parts.slice(3, parts.length - 1);
+        const endpoint = '/' + endpointParts.join('/').toLowerCase();
+        const property = parts[parts.length - 1].toLowerCase();
+        
+        if (!endpointGroups[endpoint]) {
+          endpointGroups[endpoint] = [];
+        }
+        endpointGroups[endpoint].push({ key, property });
+      });
+      
+      // Process each endpoint
+      Object.keys(endpointGroups).forEach(endpoint => {
+        config.rateLimit.endpoints[endpoint] = {};
+        
+        endpointGroups[endpoint].forEach(({ key, property }) => {
+          let value = env[key];
+          
+          // Try to convert to number for limit and window
+          if (!isNaN(Number(value)) && value !== '') {
+            value = Number(value);
+          }
+          
+          config.rateLimit.endpoints[endpoint][property] = value;
+        });
+      });
+    }
+    
+    // Handle security headers
+    const securityHeaderKeys = Object.keys(env).filter(key => 
+      key.startsWith('CONFIG_SECURITY_HEADERS_')
+    );
+    
+    if (securityHeaderKeys.length > 0) {
+      // Ensure security.headers exists
+      if (!config.security) config.security = {};
+      if (!config.security.headers) config.security.headers = {};
+      
+      securityHeaderKeys.forEach(key => {
+        // Extract header name from key
+        // CONFIG_SECURITY_HEADERS_X_CONTENT_TYPE_OPTIONS -> 'X-Content-Type-Options'
+        const parts = key.split('_');
+        const headerParts = parts.slice(3);
+        const headerName = headerParts.join('-');
+        
+        config.security.headers[headerName] = env[key];
+      });
+    }
   }
   
   /**
@@ -117,7 +257,7 @@ export class ConfigLoader {
     if (filePath) {
       try {
         const fileConfig = this.loadFromFile(filePath);
-        config = { ...config, ...fileConfig };
+        config = this.mergeConfigs(config, fileConfig);
       } catch (error) {
         console.warn(`Warning: ${error.message}`);
       }
@@ -126,11 +266,41 @@ export class ConfigLoader {
     // Load from environment variables if provided
     if (env) {
       const envConfig = this.loadFromEnv(env);
-      config = { ...config, ...envConfig };
+      config = this.mergeConfigs(config, envConfig);
     }
     
     // Apply defaults and validate
     return this.processConfig(config);
+  }
+  
+  /**
+   * Deeply merge configuration objects
+   * 
+   * @param {Object} target - Target object
+   * @param {Object} source - Source object
+   * @returns {Object} Merged object
+   * @private
+   */
+  mergeConfigs(target, source) {
+    const result = { ...target };
+    
+    // For each property in source
+    Object.keys(source).forEach(key => {
+      // If property is an object and not an array
+      if (typeof source[key] === 'object' && source[key] !== null && !Array.isArray(source[key])) {
+        // If target doesn't have the property, create it
+        if (!result[key] || typeof result[key] !== 'object') {
+          result[key] = {};
+        }
+        // Recursively merge the nested objects
+        result[key] = this.mergeConfigs(result[key], source[key]);
+      } else {
+        // For all other types, just overwrite
+        result[key] = source[key];
+      }
+    });
+    
+    return result;
   }
   
   /**

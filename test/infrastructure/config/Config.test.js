@@ -4,7 +4,9 @@ import { Config } from '../../../src/infrastructure/config/Config.js';
 describe('Config', () => {
   describe('constructor', () => {
     it('should initialize with default values', () => {
-      const config = new Config();
+      // For the new implementation, pass an empty object as the first argument
+      // and environment variables as the second argument
+      const config = new Config({}, {});
       
       // Check basic properties
       expect(config.values).toBeDefined();
@@ -28,7 +30,9 @@ describe('Config', () => {
         API_VERSION_HEADER: 'Custom-API-Version'
       };
       
-      const config = new Config(env);
+      // For the new implementation, pass an empty object as the first argument
+      // and environment variables as the second argument
+      const config = new Config({}, env);
       
       // Check overridden values
       expect(config.get('keys.prefix')).toBe('custom_');
@@ -41,7 +45,8 @@ describe('Config', () => {
   
   describe('get', () => {
     it('should retrieve routing configuration values', () => {
-      const config = new Config();
+      // For the new implementation, pass an empty object as the first argument
+      const config = new Config({}, {});
       
       // Check versioning config
       expect(config.get('routing.versioning.enabled')).toBe(true);
@@ -60,16 +65,32 @@ describe('Config', () => {
     });
     
     it('should return default value when path does not exist', () => {
-      const config = new Config();
+      const config = new Config({}, {});
       
       expect(config.get('routing.nonExistent', 'default')).toBe('default');
       expect(config.get('routing.versioning.nonExistent', 42)).toBe(42);
+    });
+    
+    it('should set and retrieve values with the set method', () => {
+      const config = new Config({}, {});
+      
+      // Set a new value
+      config.set('custom.property', 'test-value');
+      
+      // Check the value was set
+      expect(config.get('custom.property')).toBe('test-value');
+      
+      // Set a nested value
+      config.set('custom.nested.property', 123);
+      
+      // Check the nested value was set
+      expect(config.get('custom.nested.property')).toBe(123);
     });
   });
   
   describe('validate', () => {
     it('should not throw error in development environment', () => {
-      const config = new Config();
+      const config = new Config({}, {});
       
       expect(() => config.validate()).not.toThrow();
     });
@@ -77,7 +98,7 @@ describe('Config', () => {
 
   describe('getRegexPattern', () => {
     it('should create a valid regex from a parameter validation pattern', () => {
-      const config = new Config();
+      const config = new Config({}, {});
       
       // Test UUID pattern
       const uuidRegex = config.getRegexPattern('id');
@@ -103,7 +124,7 @@ describe('Config', () => {
   
   describe('proxy configuration', () => {
     it('should have default proxy configuration', () => {
-      const config = new Config();
+      const config = new Config({}, {});
       
       // Check basic proxy config
       expect(config.get('proxy.enabled')).toBe(false);
@@ -128,7 +149,7 @@ describe('Config', () => {
         PROXY_CIRCUIT_BREAKER_ENABLED: 'false'
       };
       
-      const config = new Config(env);
+      const config = new Config({}, env);
       
       expect(config.get('proxy.enabled')).toBe(true);
       expect(config.get('proxy.timeout')).toBe(5000);
@@ -138,7 +159,7 @@ describe('Config', () => {
     });
     
     it('should provide proxy configuration via getProxyConfig()', () => {
-      const config = new Config();
+      const config = new Config({}, {});
       
       const proxyConfig = config.getProxyConfig();
       
@@ -150,7 +171,7 @@ describe('Config', () => {
     });
     
     it('should register proxy services', () => {
-      const config = new Config();
+      const config = new Config({}, {});
       
       // Register a proxy service
       config.registerProxyService('example', {
@@ -174,7 +195,7 @@ describe('Config', () => {
     });
     
     it('should throw error when registering a service without name', () => {
-      const config = new Config();
+      const config = new Config({}, {});
       
       expect(() => {
         config.registerProxyService(null, { target: 'https://example.com' });
@@ -182,11 +203,70 @@ describe('Config', () => {
     });
     
     it('should throw error when registering a service without target', () => {
-      const config = new Config();
+      const config = new Config({}, {});
       
       expect(() => {
         config.registerProxyService('example', {});
       }).toThrow('Service target URL is required');
+    });
+  });
+  
+  describe('rate limit configuration', () => {
+    it('should provide rate limit configuration via getRateLimitConfig()', () => {
+      const config = new Config({}, {});
+      
+      const rateLimitConfig = config.getRateLimitConfig();
+      
+      expect(rateLimitConfig).toBeDefined();
+      expect(rateLimitConfig.defaultLimit).toBe(100);
+      expect(rateLimitConfig.defaultWindow).toBe(60000);
+      expect(rateLimitConfig.endpoints).toBeDefined();
+      expect(rateLimitConfig.headers).toBeDefined();
+    });
+    
+    it('should register rate limits for endpoints', () => {
+      const config = new Config({}, {});
+      
+      // Register a rate limit
+      config.registerRateLimit('/api/test', {
+        limit: 50,
+        window: 30000
+      });
+      
+      // Check the rate limit was registered
+      const endpoints = config.get('rateLimit.endpoints');
+      expect(endpoints['/api/test']).toBeDefined();
+      expect(endpoints['/api/test'].limit).toBe(50);
+      expect(endpoints['/api/test'].window).toBe(30000);
+    });
+    
+    it('should throw error when registering a rate limit without endpoint path', () => {
+      const config = new Config({}, {});
+      
+      expect(() => {
+        config.registerRateLimit(null, { limit: 100 });
+      }).toThrow('Endpoint path is required');
+    });
+    
+    it('should throw error when registering a rate limit without limit', () => {
+      const config = new Config({}, {});
+      
+      expect(() => {
+        config.registerRateLimit('/api/test', {});
+      }).toThrow('Rate limit is required');
+    });
+  });
+  
+  describe('security configuration', () => {
+    it('should provide security configuration via getSecurityConfig()', () => {
+      const config = new Config({}, {});
+      
+      const securityConfig = config.getSecurityConfig();
+      
+      expect(securityConfig).toBeDefined();
+      expect(securityConfig.cors).toBeDefined();
+      expect(securityConfig.apiKeyHeader).toBe('X-API-Key');
+      expect(securityConfig.headers).toBeDefined();
     });
   });
 });

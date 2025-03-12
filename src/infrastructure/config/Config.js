@@ -5,17 +5,19 @@ export class Config {
   /**
    * Create a new Config
    *
-   * @param {Object} env - Environment variables
+   * @param {Object} config - Configuration object
+   * @param {Object} env - Environment variables (for backward compatibility)
    */
-  constructor(env = {}) {
+  constructor(config = {}, env = {}) {
+    // Initialize with default values
     this.values = {
       encryption: {
-        key: env.ENCRYPTION_KEY || "development-key-do-not-use-in-production",
+        key: "development-key-do-not-use-in-production",
         algorithm: "AES-GCM",
         iterations: 100000,
       },
       hmac: {
-        secret: env.HMAC_SECRET || "development-hmac-do-not-use-in-production",
+        secret: "development-hmac-do-not-use-in-production",
         algorithm: "SHA-384",
       },
       keys: {
@@ -33,6 +35,11 @@ export class Config {
           "/validate": { limit: 300 },
           "/keys": { limit: 60 },
         },
+        headers: {
+          limit: "X-RateLimit-Limit",
+          remaining: "X-RateLimit-Remaining",
+          reset: "X-RateLimit-Reset"
+        }
       },
       security: {
         cors: {
@@ -41,6 +48,8 @@ export class Config {
           allowHeaders: "Content-Type, Authorization, X-API-Key",
           maxAge: 86400, // 24 hours
         },
+        apiKeyHeader: "X-API-Key",
+        headers: {}
       },
       logging: {
         level: env.LOG_LEVEL || (env.NODE_ENV === "production" ? "error" : "info"),
@@ -95,23 +104,62 @@ export class Config {
           backoff: 1000 // Initial backoff in ms (doubles with each retry)
         },
         // Upstream services configuration
-        services: {
-          // No services defined by default
-        }
+        services: {}
       },
     };
+    
+    // Override with provided config
+    if (config && Object.keys(config).length > 0) {
+      this.mergeValues(config);
+    }
 
-    // Override with environment values
-    this.applyEnvironmentOverrides(env);
+    // Apply legacy environment variable overrides if provided
+    if (env && Object.keys(env).length > 0) {
+      this.applyLegacyEnvironmentOverrides(env);
+    }
   }
 
   /**
-   * Apply environment variable overrides
+   * Merge provided values into the configuration
+   * @param {Object} values - Values to merge
+   * @private
+   */
+  mergeValues(values) {
+    // Deep merge
+    const merge = (target, source) => {
+      if (typeof source !== 'object' || source === null) {
+        return source;
+      }
+      
+      if (typeof target !== 'object' || target === null) {
+        return Array.isArray(source) ? [...source] : {...source};
+      }
+      
+      const result = {...target};
+      
+      Object.keys(source).forEach(key => {
+        if (typeof source[key] === 'object' && source[key] !== null &&
+            typeof result[key] === 'object' && result[key] !== null &&
+            !Array.isArray(source[key])) {
+          result[key] = merge(result[key], source[key]);
+        } else {
+          result[key] = source[key];
+        }
+      });
+      
+      return result;
+    };
+    
+    this.values = merge(this.values, values);
+  }
+
+  /**
+   * Apply legacy environment variable overrides (for backward compatibility)
    *
    * @param {Object} env - Environment variables
    * @private
    */
-  applyEnvironmentOverrides(env) {
+  applyLegacyEnvironmentOverrides(env) {
     // Apply specific overrides based on environment variables
     if (env.KEY_PREFIX) {
       this.values.keys.prefix = env.KEY_PREFIX;
@@ -120,14 +168,40 @@ export class Config {
     if (env.RATE_LIMIT) {
       this.values.rateLimit.defaultLimit = parseInt(env.RATE_LIMIT);
     }
+    
+    if (env.RATE_LIMIT_WINDOW) {
+      this.values.rateLimit.defaultWindow = parseInt(env.RATE_LIMIT_WINDOW);
+    }
 
     if (env.CORS_ALLOW_ORIGIN) {
       this.values.security.cors.allowOrigin = env.CORS_ALLOW_ORIGIN;
+    }
+    
+    if (env.CORS_ALLOW_METHODS) {
+      this.values.security.cors.allowMethods = env.CORS_ALLOW_METHODS;
+    }
+    
+    if (env.CORS_ALLOW_HEADERS) {
+      this.values.security.cors.allowHeaders = env.CORS_ALLOW_HEADERS;
+    }
+    
+    if (env.CORS_MAX_AGE) {
+      this.values.security.cors.maxAge = parseInt(env.CORS_MAX_AGE);
+    }
+    
+    if (env.API_KEY_HEADER) {
+      this.values.security.apiKeyHeader = env.API_KEY_HEADER;
     }
 
     if (env.MAINTENANCE_INTERVAL_HOURS) {
       this.values.maintenance.cleanupIntervalHours = parseInt(
         env.MAINTENANCE_INTERVAL_HOURS,
+      );
+    }
+    
+    if (env.MAINTENANCE_RETRY_INTERVAL_HOURS) {
+      this.values.maintenance.retryIntervalHours = parseInt(
+        env.MAINTENANCE_RETRY_INTERVAL_HOURS,
       );
     }
     
@@ -153,6 +227,19 @@ export class Config {
       this.values.routing.versioning.enabled = env.ROUTING_API_VERSIONING_ENABLED === 'true';
     }
     
+    // Route priority overrides
+    if (env.ROUTING_PRIORITY_EXACT) {
+      this.values.routing.priority.exact = parseInt(env.ROUTING_PRIORITY_EXACT);
+    }
+    
+    if (env.ROUTING_PRIORITY_PARAMETER) {
+      this.values.routing.priority.parameter = parseInt(env.ROUTING_PRIORITY_PARAMETER);
+    }
+    
+    if (env.ROUTING_PRIORITY_REGEX) {
+      this.values.routing.priority.regex = parseInt(env.ROUTING_PRIORITY_REGEX);
+    }
+    
     // Proxy configuration overrides
     if (env.PROXY_ENABLED !== undefined) {
       this.values.proxy.enabled = env.PROXY_ENABLED === 'true';
@@ -170,8 +257,20 @@ export class Config {
       this.values.proxy.retry.maxAttempts = parseInt(env.PROXY_RETRY_MAX_ATTEMPTS);
     }
     
+    if (env.PROXY_RETRY_BACKOFF) {
+      this.values.proxy.retry.backoff = parseInt(env.PROXY_RETRY_BACKOFF);
+    }
+    
     if (env.PROXY_CIRCUIT_BREAKER_ENABLED !== undefined) {
       this.values.proxy.circuitBreaker.enabled = env.PROXY_CIRCUIT_BREAKER_ENABLED === 'true';
+    }
+    
+    if (env.PROXY_CIRCUIT_BREAKER_FAILURE_THRESHOLD) {
+      this.values.proxy.circuitBreaker.failureThreshold = parseInt(env.PROXY_CIRCUIT_BREAKER_FAILURE_THRESHOLD);
+    }
+    
+    if (env.PROXY_CIRCUIT_BREAKER_RESET_TIMEOUT) {
+      this.values.proxy.circuitBreaker.resetTimeout = parseInt(env.PROXY_CIRCUIT_BREAKER_RESET_TIMEOUT);
     }
     
     // Logging overrides
@@ -185,6 +284,28 @@ export class Config {
     
     if (env.REQUEST_ID_HEADER) {
       this.values.logging.requestIdHeader = env.REQUEST_ID_HEADER;
+    }
+    
+    // Rate limit header overrides
+    if (env.RATE_LIMIT_HEADER_LIMIT) {
+      this.values.rateLimit.headers.limit = env.RATE_LIMIT_HEADER_LIMIT;
+    }
+    
+    if (env.RATE_LIMIT_HEADER_REMAINING) {
+      this.values.rateLimit.headers.remaining = env.RATE_LIMIT_HEADER_REMAINING;
+    }
+    
+    if (env.RATE_LIMIT_HEADER_RESET) {
+      this.values.rateLimit.headers.reset = env.RATE_LIMIT_HEADER_RESET;
+    }
+    
+    // Also try to read keys from environment for backward compatibility
+    if (env.ENCRYPTION_KEY) {
+      this.values.encryption.key = env.ENCRYPTION_KEY;
+    }
+    
+    if (env.HMAC_SECRET) {
+      this.values.hmac.secret = env.HMAC_SECRET;
     }
   }
 
@@ -200,13 +321,38 @@ export class Config {
     let current = this.values;
 
     for (const part of parts) {
-      if (current[part] === undefined) {
+      if (current === undefined || current[part] === undefined) {
         return defaultValue;
       }
       current = current[part];
     }
 
     return current;
+  }
+
+  /**
+   * Set a configuration value
+   *
+   * @param {string} path - Dot-separated path to configuration value
+   * @param {*} value - Value to set
+   * @returns {Config} This config instance for chaining
+   */
+  set(path, value) {
+    const parts = path.split(".");
+    let current = this.values;
+
+    // Create nested objects as needed
+    for (let i = 0; i < parts.length - 1; i++) {
+      const part = parts[i];
+      if (current[part] === undefined) {
+        current[part] = {};
+      }
+      current = current[part];
+    }
+
+    // Set the value
+    current[parts[parts.length - 1]] = value;
+    return this;
   }
 
   /**
@@ -287,6 +433,33 @@ export class Config {
       services: this.get('proxy.services')
     };
   }
+
+  /**
+   * Get rate limiting configuration
+   * 
+   * @returns {Object} Rate limit configuration
+   */
+  getRateLimitConfig() {
+    return {
+      defaultLimit: this.get('rateLimit.defaultLimit'),
+      defaultWindow: this.get('rateLimit.defaultWindow'),
+      endpoints: this.get('rateLimit.endpoints'),
+      headers: this.get('rateLimit.headers')
+    };
+  }
+  
+  /**
+   * Get security configuration
+   * 
+   * @returns {Object} Security configuration
+   */
+  getSecurityConfig() {
+    return {
+      cors: this.get('security.cors'),
+      headers: this.get('security.headers'),
+      apiKeyHeader: this.get('security.apiKeyHeader')
+    };
+  }
   
   /**
    * Register a proxy service
@@ -315,6 +488,35 @@ export class Config {
     
     // Store the service configuration
     this.values.proxy.services[name] = config;
+    
+    return this;
+  }
+  
+  /**
+   * Register a rate limit for an endpoint
+   * 
+   * @param {string} endpoint - Endpoint path
+   * @param {Object} config - Rate limit configuration
+   * @param {number} config.limit - Rate limit
+   * @param {number} [config.window] - Rate limit window in milliseconds
+   * @returns {Config} - This config instance for chaining
+   */
+  registerRateLimit(endpoint, config) {
+    if (!endpoint || typeof endpoint !== 'string') {
+      throw new Error('Endpoint path is required');
+    }
+    
+    if (!config || !config.limit) {
+      throw new Error('Rate limit is required');
+    }
+    
+    // Initialize endpoints object if it doesn't exist
+    if (!this.values.rateLimit.endpoints) {
+      this.values.rateLimit.endpoints = {};
+    }
+    
+    // Store the rate limit configuration
+    this.values.rateLimit.endpoints[endpoint] = config;
     
     return this;
   }
