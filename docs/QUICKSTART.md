@@ -72,6 +72,102 @@ wrangler kv:namespace create "KV"
 
 Copy the ID from the output and update your wrangler.jsonc file with the correct KV namespace ID.
 
+## Configuration
+
+The API Gateway uses a comprehensive configuration system that supports:
+- Configuration files in JSON format
+- Environment variables with the `CONFIG_` prefix
+- OpenAPI schema validation for all settings
+
+### Basic Configuration Setup
+
+Create a configuration file (e.g., `config.json`) with your settings:
+
+```json
+{
+  "proxy": {
+    "enabled": true,
+    "services": {
+      "auth": {
+        "target": "https://auth-service.example.com",
+        "pathRewrite": {
+          "^/api/auth": ""
+        },
+        "headers": {
+          "X-Internal-Service": "gateway"
+        }
+      },
+      "users": {
+        "target": "https://user-service.example.com",
+        "timeout": 5000
+      },
+      "content": {
+        "target": "https://content-service.example.com",
+        "pathRewrite": {
+          "^/api/content": "/v2"
+        }
+      }
+    }
+  },
+  "encryption": {
+    "key": "your-encryption-key-here-for-development-only"
+  },
+  "hmac": {
+    "secret": "your-hmac-secret-here-for-development-only" 
+  },
+  "security": {
+    "cors": {
+      "allowOrigin": "*",
+      "allowMethods": "GET, POST, PUT, DELETE, OPTIONS",
+      "allowHeaders": "Content-Type, Authorization, X-API-Key" 
+    },
+    "apiKeyHeader": "X-API-Key"
+  },
+  "logging": {
+    "level": "info",
+    "includeTrace": true
+  }
+}
+```
+
+### Using Environment Variables
+
+All configuration options can also be set via environment variables with a `CONFIG_` prefix:
+
+```bash
+# Example: Set logging level to debug
+CONFIG_LOGGING_LEVEL=debug npm run dev
+
+# Example: Enable proxy functionality
+CONFIG_PROXY_ENABLED=true npm run dev
+
+# Example: Configure a proxy service
+CONFIG_PROXY_SERVICES_AUTH_TARGET=https://auth.example.com npm run dev
+```
+
+### Configuration Priority
+
+Configuration values are resolved with the following priority (highest to lowest):
+1. Environment variables with `CONFIG_` prefix
+2. Values from configuration file
+3. Default values from the OpenAPI schema
+
+### Production Configuration
+
+For production deployments, set these required security variables as Cloudflare secrets:
+
+```bash
+# Generate secure random values
+ENCRYPTION_KEY=$(openssl rand -base64 32)
+HMAC_SECRET=$(openssl rand -base64 32)
+
+# Set them as Cloudflare secrets
+wrangler secret put ENCRYPTION_KEY
+wrangler secret put HMAC_SECRET
+```
+
+For more details, see the [Configuration documentation](./CONFIGURATION.md).
+
 ## Local Development
 
 ```mermaid
@@ -631,37 +727,113 @@ def create_api_key(admin_key, key_data):
 
 ### Express.js Middleware Example
 
+Here's a complete middleware implementation for validating API keys in Express.js applications:
+
 ```javascript
 // API Key validation middleware for Express.js
-function apiKeyMiddleware(requiredScopes = []) {
+const axios = require('axios');
+
+/**
+ * Creates middleware for validating API keys against the API Gateway
+ * @param {Object} options - Configuration options
+ * @param {string} options.gatewayUrl - API Gateway URL
+ * @param {string[]} options.requiredScopes - Required permission scopes
+ * @param {boolean} options.cacheResults - Whether to cache validation results
+ * @param {number} options.cacheTtl - Cache TTL in milliseconds
+ * @param {boolean} options.failClosed - If true, deny access on gateway errors
+ */
+function createApiKeyMiddleware(options = {}) {
+  const {
+    gatewayUrl = 'https://your-gateway.workers.dev',
+    requiredScopes = [],
+    cacheResults = true,
+    cacheTtl = 60000, // 1 minute
+    failClosed = true
+  } = options;
+
+  // Simple in-memory cache
+  const cache = new Map();
+
+  // Cleanup expired cache entries periodically
+  if (cacheResults) {
+    setInterval(() => {
+      const now = Date.now();
+      for (const [key, entry] of cache.entries()) {
+        if (now > entry.expiresAt) {
+          cache.delete(key);
+        }
+      }
+    }, Math.min(cacheTtl, 60000)); // Run at most every minute
+  }
+
   return async (req, res, next) => {
-    const apiKey = req.headers['x-api-key'];
+    // Get API key from header or query parameter
+    const apiKey = req.headers['x-api-key'] || req.query.api_key;
     
     if (!apiKey) {
       return res.status(401).json({ 
-        error: 'API key is required' 
+        error: 'API key is required',
+        code: 'MISSING_API_KEY',
+        requestId: req.id || crypto.randomUUID()
       });
     }
     
+    // Check cache first
+    if (cacheResults) {
+      const cacheKey = `${apiKey}:${requiredScopes.join(',')}`;
+      const cachedResult = cache.get(cacheKey);
+      
+      if (cachedResult && cachedResult.expiresAt > Date.now()) {
+        // Add validated info to request object
+        req.apiKey = cachedResult.data;
+        
+        // Handle rotation warnings
+        if (cachedResult.data.warning) {
+          res.setHeader('X-API-Key-Warning', cachedResult.data.warning);
+        }
+        
+        return next();
+      }
+    }
+    
     try {
-      const response = await fetch('https://your-worker.workers.dev/validate', {
+      // Validate key against API Gateway
+      const response = await axios({
         method: 'POST',
+        url: `${gatewayUrl}/validate`,
         headers: {
           'Content-Type': 'application/json',
-          'X-API-Key': apiKey
+          'X-API-Key': apiKey,
+          'X-Request-ID': req.id || crypto.randomUUID()
         },
-        body: JSON.stringify({ scopes: requiredScopes })
+        data: { scopes: requiredScopes },
+        timeout: 5000 // 5-second timeout
       });
       
-      const result = await response.json();
+      const result = response.data;
       
       if (result.valid) {
-        // Add validated info to request object
-        req.apiKey = {
+        // Prepare API key info
+        const apiKeyInfo = {
           id: result.keyId,
           owner: result.owner,
-          scopes: result.scopes
+          scopes: result.scopes,
+          warning: result.warning,
+          rotatedToId: result.rotatedToId,
+          gracePeriodEnds: result.gracePeriodEnds
         };
+        
+        // Cache result
+        if (cacheResults) {
+          const cacheKey = `${apiKey}:${requiredScopes.join(',')}`;
+          cache.set(cacheKey, {
+            data: apiKeyInfo,
+            expiresAt: Date.now() + cacheTtl
+          });
+        }
+        
+        // Add validated info to request object
+        req.apiKey = apiKeyInfo;
         
         // Check for rotation warning
         if (result.warning) {
@@ -672,27 +844,87 @@ function apiKeyMiddleware(requiredScopes = []) {
         next();
       } else {
         return res.status(403).json({ 
-          error: result.error || 'Invalid API key' 
+          error: result.error || 'Invalid API key',
+          code: result.code || 'INVALID_API_KEY',
+          requestId: req.id || crypto.randomUUID()
         });
       }
     } catch (error) {
       console.error('API key validation error:', error);
-      return res.status(500).json({ 
-        error: 'Failed to validate API key' 
-      });
+      
+      // Decide whether to fail open or closed
+      if (failClosed) {
+        return res.status(500).json({ 
+          error: 'Failed to validate API key',
+          code: 'VALIDATION_ERROR',
+          requestId: req.id || crypto.randomUUID()
+        });
+      } else {
+        // In fail-open mode (less secure but more available), 
+        // we allow the request through but log the error
+        console.warn(`Fail-open: Allowing request despite validation error: ${error.message}`);
+        next();
+      }
     }
   };
 }
 
+// Configuration options for different environments
+const apiKeyMiddlewareOptions = {
+  development: {
+    gatewayUrl: 'http://localhost:8787',
+    cacheResults: false,  // Disable cache for development
+    failClosed: false     // Allow requests on errors for easier development
+  },
+  production: {
+    gatewayUrl: 'https://api-gateway.example.com',
+    cacheResults: true,
+    cacheTtl: 300000,     // 5 minutes cache
+    failClosed: true      // Block requests on errors in production
+  }
+};
+
+// Create environment-specific middleware
+const env = process.env.NODE_ENV || 'development';
+const apiKeyMiddleware = createApiKeyMiddleware(apiKeyMiddlewareOptions[env]);
+
 // Usage in Express routes
 app.get('/protected-resource', 
-  apiKeyMiddleware(['read:data']), 
+  apiKeyMiddleware, // Use without parameters for global required scopes
   (req, res) => {
     // Access is granted and key is valid
     res.json({ 
       message: 'Success', 
       data: 'Protected data',
       keyOwner: req.apiKey.owner
+    });
+  }
+);
+
+// Usage with specific scopes for a route
+app.post('/users', 
+  createApiKeyMiddleware({ ...apiKeyMiddlewareOptions[env], requiredScopes: ['write:users'] }),
+  (req, res) => {
+    // Only keys with write:users scope can access this
+    res.json({ 
+      message: 'User created',
+      userId: 123
+    });
+  }
+);
+
+// Protected route with multiple scopes required
+app.delete('/admin/users/:id', 
+  createApiKeyMiddleware({ 
+    ...apiKeyMiddlewareOptions[env], 
+    requiredScopes: ['admin:users', 'delete:users'],
+    failClosed: true // Always fail closed for admin routes
+  }),
+  (req, res) => {
+    // High-security route requires multiple permissions
+    res.json({ 
+      message: 'User deleted',
+      id: req.params.id
     });
   }
 );
@@ -720,22 +952,94 @@ flowchart TB
     style J fill:#f96,stroke:#333,stroke-width:2px
 ```
 
-Deploy to Cloudflare Workers:
+### Pre-deployment Checklist
+
+Before deploying to production, make sure you have completed the following:
+
+1. Generated secure encryption key and HMAC secret
+2. Created a production configuration file
+3. Set required environment variables
+4. Tested your configuration locally
+5. Planned your initial setup (admin user information)
+6. Prepared your database strategy (KV namespaces for different environments)
+7. Configured custom domains (if required)
+
+### Environment-Specific Settings
+
+#### Development Environment
 
 ```bash
-npm run deploy
+# Create a development KV namespace
+wrangler kv:namespace create "KV_DEV"
+
+# Update wrangler.jsonc with dev binding
+# Example:
+#  "dev": {
+#    "kv_namespaces": [
+#      {
+#        "binding": "KV",
+#        "id": "your-dev-kv-id"
+#      }
+#    ]
+#  }
 ```
 
-This will deploy the API Key Manager service to Cloudflare Workers using Wrangler.
+#### Production Environment 
 
-## Environment Variables
+```bash
+# Create a production KV namespace
+wrangler kv:namespace create "KV_PROD" --env production
+
+# Update wrangler.jsonc with production binding
+# Example:
+#  "env": {
+#    "production": {
+#      "kv_namespaces": [
+#        {
+#          "binding": "KV",
+#          "id": "your-prod-kv-id"
+#        }
+#      ]
+#    }
+#  }
+```
+
+### Deploying to Different Environments
+
+#### Development Deployment
+
+```bash
+# Deploy to development environment
+npm run dev
+
+# Alternatively, use Wrangler directly
+wrangler deploy --env development
+```
+
+#### Production Deployment
+
+```bash
+# Deploy to production environment
+npm run deploy:prod
+
+# Alternatively, use Wrangler directly
+wrangler deploy --env production
+```
+
+This will deploy the API Gateway service to Cloudflare Workers using Wrangler.
+
+### Environment Variables and Secrets
 
 Set the following secret environment variables for production:
 
 ```bash
-# Generate secure random values for these secrets
-wrangler secret put ENCRYPTION_KEY
-wrangler secret put HMAC_SECRET
+# For dev/staging environments
+wrangler secret put ENCRYPTION_KEY --env development
+wrangler secret put HMAC_SECRET --env development
+
+# For production
+wrangler secret put ENCRYPTION_KEY --env production
+wrangler secret put HMAC_SECRET --env production
 ```
 
 ### Recommended Secret Generation
@@ -744,11 +1048,69 @@ For maximum security, generate strong random values for your secrets:
 
 ```bash
 # Generate a secure encryption key (32 bytes)
-openssl rand -base64 32
+ENCRYPTION_KEY=$(openssl rand -base64 32)
+echo "ENCRYPTION_KEY: $ENCRYPTION_KEY"
 
 # Generate a secure HMAC secret (32 bytes)
-openssl rand -base64 32
+HMAC_SECRET=$(openssl rand -base64 32)
+echo "HMAC_SECRET: $HMAC_SECRET"
+
+# Save these securely in your password manager or secrets vault
 ```
+
+### Custom Domain Setup
+
+To use a custom domain with your API Gateway:
+
+1. Add a custom domain in your Cloudflare Workers configuration:
+
+```bash
+# Add a custom domain
+wrangler domain add api-gateway.yourdomain.com --env production
+```
+
+2. Update your DNS settings to point to your Workers domain.
+
+3. Configure your `wrangler.jsonc` with the custom domain:
+
+```json
+{
+  "env": {
+    "production": {
+      "route": "api-gateway.yourdomain.com/*"
+    }
+  }
+}
+```
+
+### Post-Deployment Steps
+
+After successful deployment, perform these important steps:
+
+1. Create the initial super admin:
+
+```bash
+curl -X POST https://api-gateway.yourdomain.com/setup \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Super Admin",
+    "email": "admin@example.com"
+  }'
+```
+
+2. Test the deployment with basic health check:
+
+```bash
+curl https://api-gateway.yourdomain.com/health
+```
+
+3. Check logs to verify proper functioning:
+
+```bash
+wrangler tail --env production
+```
+
+4. Set up monitoring and alerts (see Monitoring section).
 
 ## Next Steps
 
