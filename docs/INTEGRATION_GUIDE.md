@@ -1,15 +1,15 @@
-# API Key Manager Integration Guide
+# API Gateway Integration Guide
 
-This comprehensive guide explains how to integrate the API Gateway Workers into your existing systems, providing detailed steps, examples, and diagrams to ensure a smooth integration process.
+This comprehensive guide explains how to integrate the API Gateway into your existing systems, providing detailed steps, examples, and diagrams to ensure a smooth integration process.
 
 ## Architecture Overview
 
-The API Gateway Workers is designed as a modular, cloud-native service with multiple components that work together to provide a robust API management solution:
+The API Gateway is designed as a modular, cloud-native service built on Cloudflare Workers with multiple components that work together to provide a robust API management solution:
 
 ```mermaid
 flowchart TB
     User([Client Application])
-    Gateway[API Gateway Workers]
+    Gateway[API Gateway]
     Key[Key Management]
     Auth[Authentication]
     Proxy[Proxy Service]

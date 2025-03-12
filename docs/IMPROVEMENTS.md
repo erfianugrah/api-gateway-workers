@@ -47,7 +47,7 @@ pie
 
 ```mermaid
 graph TD
-    subgraph Security
+    subgraph Security_Enhancements["Security"]
         IP[IP Address Extraction]
         Rate[Rate Limiting]
         Input[Input Validation]
@@ -75,7 +75,7 @@ graph TD
     Key --> Key2[Stale Entry Management]
     Key --> Key3[Expiration Handling]
     
-    style Security fill:#f9f,stroke:#333,stroke-width:2px
+    style Security_Enhancements fill:#f9f,stroke:#333,stroke-width:2px
     style IP fill:#bbf,stroke:#333,stroke-width:1px
     style Rate fill:#bbf,stroke:#333,stroke-width:1px
     style Input fill:#bbf,stroke:#333,stroke-width:1px

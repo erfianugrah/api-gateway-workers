@@ -1,6 +1,6 @@
-# API Gateway Workers Configuration Guide
+# API Gateway Configuration Guide
 
-The API Gateway Workers project provides a comprehensive configuration system that allows you to customize various aspects of the gateway without modifying code. This document describes the configuration options, how to provide configuration values, and best practices for different environments.
+The API Gateway project provides a comprehensive configuration system that allows you to customize various aspects of the gateway without modifying code. This document describes the configuration options, how to provide configuration values, and best practices for different environments.
 
 ## Configuration Architecture
 

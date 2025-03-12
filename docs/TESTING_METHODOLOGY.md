@@ -1,10 +1,10 @@
 # Testing Methodology
 
-This document outlines the testing approach for the API Gateway Workers project, providing guidelines on how to write effective tests, avoid common pitfalls, and maintain a robust test suite.
+This document outlines the testing approach for the API Gateway project, providing guidelines on how to write effective tests, avoid common pitfalls, and maintain a robust test suite.
 
 ## Testing Architecture Overview
 
-The API Gateway Workers employs a layered testing approach that matches the clean architecture of the codebase:
+The API Gateway employs a layered testing approach that matches the clean architecture of the codebase:
 
 ```mermaid
 flowchart TD

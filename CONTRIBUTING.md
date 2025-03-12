@@ -1,6 +1,6 @@
-# Contributing to API Key Manager
+# Contributing to API Gateway
 
-We welcome contributions to the API Key Manager project! This document provides guidelines and instructions for contributing.
+We welcome contributions to the API Gateway project! This document provides guidelines and instructions for contributing.
 
 ## Code of Conduct
 
@@ -74,6 +74,10 @@ npm run test:coverage
 - Consider rate limiting for public endpoints
 - Validate all inputs thoroughly
 - Use cryptographically secure random number generation
+- Use proper circuit breaker patterns for proxy functionality
+- Implement timeout handling for all network operations
+- Apply proper security headers in API responses
+- Consider CORS configuration for cross-origin requests
 
 ## Testing Guidelines
 
@@ -115,23 +119,44 @@ When making changes, update the relevant documentation:
 The project has the following structure:
 
 ```
-key-manager-workers/
-├── src/                  # Source code
-│   ├── handlers/         # API route handlers
-│   ├── lib/              # Core functionality
-│   ├── models/           # Business logic and data models
-│   ├── utils/            # Utility functions
-│   └── index.js          # Entry point
-├── test/                 # Test suite
-│   ├── lib/              # Core functionality tests
-│   ├── models/           # Business logic tests
-│   ├── utils/            # Utility tests
-│   └── integration-test.sh # Integration tests
-├── docs/                 # Documentation
-│   ├── API.md            # API documentation
-│   ├── ARCHITECTURE.md   # Architecture documentation
-│   └── SECURITY.md       # Security implementation details
-└── wrangler.jsonc        # Cloudflare Workers configuration
+api-gateway-workers/
+├── src/                        # Source code
+│   ├── api/                    # API Layer
+│   │   ├── controllers/        # Request handlers (KeysController, etc.)
+│   │   └── middleware/         # HTTP middleware (auth, CORS, error handling)
+│   ├── core/                   # Domain and Application Layers
+│   │   ├── audit/              # Audit logging functionality
+│   │   ├── auth/               # Authentication domain services
+│   │   ├── command/            # Command pattern implementation
+│   │   ├── errors/             # Domain error definitions
+│   │   ├── keys/               # Key management domain
+│   │   │   ├── commands/       # Command objects (CreateKeyCommand, etc.)
+│   │   │   └── handlers/       # Command handlers for business logic
+│   │   ├── proxy/              # API Gateway proxy functionality
+│   │   └── security/           # Security services (encryption, HMAC)
+│   ├── infrastructure/         # Infrastructure Layer
+│   │   ├── config/             # Configuration system
+│   │   ├── di/                 # Dependency injection container
+│   │   ├── http/               # HTTP routing
+│   │   ├── logging/            # Logging system
+│   │   └── storage/            # Data storage implementations
+│   ├── lib/                    # Integration Layer
+│   │   └── KeyManagerDurableObject.js # Main Durable Object
+│   ├── models/                 # Business models
+│   └── utils/                  # Utility functions
+├── test/                       # Test suite
+│   ├── api/                    # API layer tests
+│   ├── core/                   # Domain and application layer tests
+│   │   ├── keys/commands/      # Command tests
+│   │   └── keys/handlers/      # Handler tests
+│   ├── infrastructure/         # Infrastructure layer tests
+│   ├── utils/                  # Test utilities
+│   └── integration-test.sh     # Integration tests
+├── schemas/                    # Configuration schemas
+│   └── config.schema.json      # OpenAPI schema for configuration
+├── docs/                       # Documentation
+├── config.example.json         # Example configuration file
+└── wrangler.jsonc              # Cloudflare Workers configuration
 ```
 
 ## Release Process
@@ -145,4 +170,4 @@ key-manager-workers/
 
 If you need help with contributing, please open an issue with the "question" label.
 
-Thank you for contributing to the API Key Manager project!
+Thank you for contributing to the API Gateway project!

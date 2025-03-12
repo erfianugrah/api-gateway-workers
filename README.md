@@ -1,6 +1,6 @@
-# API Gateway 
+# API Gateway
 
-A secure, scalable Cloudflare Workers service for API key management with role-based access control, evolving toward becoming a full-fledged API gateway. This service enables creating, validating, and managing API keys with support for permission scopes, key expiration, usage tracking, and comprehensive audit logging.
+A secure, scalable API gateway service built on Cloudflare Workers, providing both comprehensive API key management and full-fledged gateway capabilities. This service enables creating, validating, and managing API keys with permission scopes and expiration, while also offering advanced gateway features like request routing, proxying with circuit breaker patterns, and API versioning.
 
 ## Features
 
@@ -48,6 +48,9 @@ This service uses Cloudflare Workers with Durable Objects and KV storage for:
 flowchart TB
     A["API Request<br>HTTP/HTTPS"] -->|Request| B["Cloudflare Worker<br>Entry Point"]
     B --> C["Auth Middleware<br>Role-Based Access"]
+    B --> H["Router<br>Pattern Matching"]
+    H --> I["Proxy Service<br>Circuit Breaker"]
+    I -->|Forward| J["Upstream<br>Services"]
     C --> D["Key Manager<br>Durable Object"]
     D --> E["Persistent Storage<br>Durable Objects"]
     B <--> F["KV Storage<br>Admin & Audit Data"]
@@ -60,6 +63,9 @@ flowchart TB
     style E fill:#333366,stroke:#88aacc,stroke-width:2px,color:#ffffff
     style F fill:#333366,stroke:#88aacc,stroke-width:2px,color:#ffffff
     style G fill:#333366,stroke:#88aacc,stroke-width:2px,color:#ffffff
+    style H fill:#335577,stroke:#88aacc,stroke-width:2px,color:#ffffff
+    style I fill:#335577,stroke:#88aacc,stroke-width:2px,color:#ffffff
+    style J fill:#337788,stroke:#88aacc,stroke-width:2px,color:#ffffff
 ```
 
 ### Project Structure

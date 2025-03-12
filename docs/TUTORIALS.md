@@ -1,6 +1,6 @@
-# API Gateway Workers Tutorials
+# API Gateway Tutorials
 
-This document provides step-by-step tutorials for common use cases of the API Gateway Workers. These tutorials will help you understand how to use the key features of the API Gateway and integrate it into your workflow.
+This document provides step-by-step tutorials for common use cases of the API Gateway. These tutorials will help you understand how to use the key features of the API Gateway and integrate it into your workflow.
 
 ## Table of Contents
 

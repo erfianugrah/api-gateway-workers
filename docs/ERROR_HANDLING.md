@@ -1,6 +1,6 @@
 # Error Handling Guide
 
-The API Gateway Workers implements a comprehensive error handling system to provide consistent, secure, and informative error responses across the application. This guide explains how errors are structured, the standard error codes, and how to handle errors both as an API consumer and as a developer extending the Gateway.
+The API Gateway implements a comprehensive error handling system to provide consistent, secure, and informative error responses across the application. This guide explains how errors are structured, the standard error codes, and how to handle errors both as an API consumer and as a developer extending the Gateway.
 
 ## Error Response Format
 

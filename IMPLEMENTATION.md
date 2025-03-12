@@ -1,6 +1,6 @@
-# Key Manager Workers Implementation
+# API Gateway Implementation
 
-This document describes the implementation details of the key manager service and API gateway, including architecture, patterns, security features, and routing capabilities.
+This document describes the implementation details of the API Gateway service, including architecture, patterns, security features, and gateway capabilities.
 
 ## Clean Architecture Implementation
 

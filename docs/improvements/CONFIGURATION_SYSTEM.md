@@ -2,11 +2,11 @@
 
 ## Overview
 
-This document summarizes the implementation of a comprehensive, OpenAPI-validated configuration system for the API Gateway Workers project. The new configuration system enhances the gateway's customizability by replacing hardcoded values with configurable settings.
+This document summarizes the implementation of a comprehensive, OpenAPI-validated configuration system for the API Gateway project. The new configuration system enhances the gateway's customizability by replacing hardcoded values with configurable settings.
 
 ```mermaid
 graph TD
-    subgraph "Configuration System"
+    subgraph Configuration_System["Configuration System"]
         Schema[OpenAPI Schema]
         Config[Config Object]
         Defaults[Default Values]
@@ -19,7 +19,7 @@ graph TD
     EnvVars --> |overrides| Config
     ConfigFile --> |overrides| Config
     
-    subgraph "Components Using Config"
+    subgraph Components_Using_Config["Components Using Config"]
         Auth[Auth Middleware]
         CORS[CORS Middleware]
         Router[Router]

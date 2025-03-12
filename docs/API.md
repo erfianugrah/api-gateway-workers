@@ -1,6 +1,6 @@
 # API Reference Documentation
 
-This document provides a comprehensive reference for all API endpoints provided by the API Gateway Workers. It includes request/response formats, authentication requirements, error codes, and usage examples.
+This document provides a comprehensive reference for all API endpoints provided by the API Gateway. It includes request/response formats, authentication requirements, error codes, and usage examples.
 
 ## API Overview
 
@@ -59,7 +59,7 @@ flowchart TD
         A[Client Application]
     end
     
-    subgraph "API Gateway Workers"
+    subgraph API_Gateway["API Gateway"]
         B[Request Handling]
         C[Authentication Middleware]
         D[Rate Limiting]
@@ -98,7 +98,7 @@ flowchart TD
     J --> N
     
     style Client fill:#f9f,stroke:#333,stroke-width:2px
-    style "API Gateway Workers" fill:#bbf,stroke:#333,stroke-width:2px
+    style API_Gateway fill:#bbf,stroke:#333,stroke-width:2px
     style Backend fill:#dfd,stroke:#333,stroke-width:1px
 ```
 

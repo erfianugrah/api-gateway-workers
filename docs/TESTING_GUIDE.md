@@ -1,6 +1,6 @@
-# Testing Guide for API Key Manager
+# Testing Guide for API Gateway
 
-This guide provides comprehensive instructions for testing the API Key Manager with the Clean Architecture and Command pattern implementation. The testing strategy aligns with the architectural layers to ensure thorough verification of functionality at all levels.
+This guide provides comprehensive instructions for testing the API Gateway with the Clean Architecture and Command pattern implementation. The testing strategy aligns with the architectural layers to ensure thorough verification of functionality at all levels.
 
 ## Test Architecture Overview
 

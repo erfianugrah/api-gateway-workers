@@ -1,12 +1,12 @@
 # Security Implementation Details
 
-This document outlines the security features implemented in the API Key Manager service.
+This document outlines the security features implemented in the API Gateway service.
 
 ## Security Architecture Overview
 
 ```mermaid
 graph TD
-    subgraph "Security Layers"
+    subgraph Security_Layers["Security Layers"]
         direction TB
         API[API Request] --> AuthN[Authentication]
         AuthN --> AuthZ[Authorization]
@@ -23,7 +23,7 @@ graph TD
         Integrity[Integrity Verification] -.-> Processing
     end
     
-    subgraph "Security Mechanisms"
+    subgraph Security_Mechanisms["Security Mechanisms"]
         direction TB
         HMAC[HMAC Verification]
         AES[AES-GCM Encryption]

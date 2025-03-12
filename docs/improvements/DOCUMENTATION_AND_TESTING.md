@@ -1,19 +1,19 @@
 # Documentation and Testing Improvements
 
-This document outlines comprehensive improvements to both the documentation and testing methodology for the API Gateway Workers project.
+This document outlines comprehensive improvements to both the documentation and testing methodology for the API Gateway project.
 
 ## Documentation and Testing Strategy
 
 ```mermaid
 graph TD
-    subgraph "Documentation Strategy"
+    subgraph Documentation_Strategy["Documentation Strategy"]
         D1[New Documentation Files]
         D2[Updates to Existing Docs]
         D3[Code Examples]
         D4[Visual Diagrams]
     end
     
-    subgraph "Testing Strategy"
+    subgraph Testing_Strategy["Testing Strategy"]
         T1[Test Infrastructure]
         T2[Missing Test Coverage]
         T3[Test Methodology]
@@ -52,8 +52,8 @@ graph TD
     T4 --> T4b[Documentation Validation]
     T4 --> T4c[Performance Testing]
     
-    style "Documentation Strategy" fill:#f9f,stroke:#333,stroke-width:2px
-    style "Testing Strategy" fill:#bbf,stroke:#333,stroke-width:2px
+    style Documentation_Strategy fill:#f9f,stroke:#333,stroke-width:2px
+    style Testing_Strategy fill:#bbf,stroke:#333,stroke-width:2px
 ```
 
 ## Documentation Improvements
@@ -72,18 +72,18 @@ pie
 
 ```mermaid
 graph LR
-    subgraph "High Priority"
+    subgraph High_Priority["High Priority"]
         H1[TUTORIALS.md]
         H2[ERROR_HANDLING.md]
     end
     
-    subgraph "Medium Priority"
+    subgraph Medium_Priority["Medium Priority"]
         M1[MIGRATION.md]
         M2[OPERATIONS.md]
         M3[PERFORMANCE.md]
     end
     
-    subgraph "Low Priority"
+    subgraph Low_Priority["Low Priority"]
         L1[STYLE_GUIDE.md]
     end
     

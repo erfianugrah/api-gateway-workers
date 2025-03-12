@@ -1,6 +1,6 @@
 # Architecture Documentation
 
-This document provides a detailed overview of the API Key Manager's architecture, including the new authentication and role-based access control system.
+This document provides a detailed overview of the API Gateway's architecture, including the authentication system, role-based access control, and gateway functionality.
 
 ## System Architecture
 

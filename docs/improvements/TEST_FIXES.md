@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document outlines the fixes applied to the test suite and provides best practices for maintaining tests in the API Gateway Workers project. The primary issues were related to ES Modules and Jest mocking functionality, which required explicit imports of Jest globals.
+This document outlines the fixes applied to the test suite and provides best practices for maintaining tests in the API Gateway project. The primary issues were related to ES Modules and Jest mocking functionality, which required explicit imports of Jest globals.
 
 Additionally, tests for previously missing handlers (RevokeKeyHandler and RotateKeyHandler) have been implemented to complete the test coverage.
 
@@ -47,7 +47,7 @@ In ES Modules, Jest globals (jest, describe, it, expect, etc.) need to be explic
 
 ```mermaid
 graph TD
-    subgraph "ES Module Import Issue"
+    subgraph ES_Module_Import_Issue["ES Module Import Issue"]
         A1[CommonJS Module]
         A2[ES Module]
     end
@@ -58,7 +58,7 @@ graph TD
     B1 -->|Example| C1["describe, it, expect<br>Available Globally"]
     B2 -->|Example| C2["import { describe, it, expect }<br>from '@jest/globals'"]
     
-    style "ES Module Import Issue" fill:#f9f,stroke:#333,stroke-width:2px
+    style ES_Module_Import_Issue fill:#f9f,stroke:#333,stroke-width:2px
     style A1 fill:#bbf,stroke:#333,stroke-width:1px
     style A2 fill:#fbb,stroke:#333,stroke-width:1px
     style B1 fill:#bbf,stroke:#333,stroke-width:1px

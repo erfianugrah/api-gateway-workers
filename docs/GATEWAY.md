@@ -1,6 +1,6 @@
 # API Gateway Functionality
 
-The Key Manager Workers service has been enhanced with API Gateway capabilities, allowing it to not only manage API keys but also serve as a full-fledged API gateway. This document provides detailed information about these new features, their implementation, and how to use them effectively.
+This API Gateway service, built on Cloudflare Workers, combines comprehensive key management with full-fledged API gateway capabilities. This document provides detailed information about these gateway features, their implementation, and how to use them effectively.
 
 ## Overview
 
@@ -288,30 +288,30 @@ sequenceDiagram
 ```mermaid
 stateDiagram-v2
     [*] --> Closed
-    
-    Closed --> Open: Failures > Threshold
-    Open --> HalfOpen: Reset timeout expired
-    HalfOpen --> Closed: Successful request
-    HalfOpen --> Open: Failed request
-    
+
+    Closed --> Open : Failures > Threshold
+    Open --> HalfOpen : Reset timeout expired
+    HalfOpen --> Closed : Successful request
+    HalfOpen --> Open : Failed request
+
     state Closed {
         [*] --> Normal
-        Normal --> CheckFailures: Request fails
-        CheckFailures --> Normal: Below threshold
-        CheckFailures --> ExitClosed: Above threshold
+        Normal --> CheckFailures : Request fails
+        CheckFailures --> Normal : Below threshold
+        CheckFailures --> ExitClosed : Above threshold
     }
-    
+
     state Open {
         [*] --> Blocked
-        Blocked --> CheckTimeout: Request received
-        CheckTimeout --> Blocked: Timeout not expired
-        CheckTimeout --> ExitOpen: Timeout expired
+        Blocked --> CheckTimeout : Request received
+        CheckTimeout --> Blocked : Timeout not expired
+        CheckTimeout --> ExitOpen : Timeout expired
     }
-    
+
     state HalfOpen {
         [*] --> Testing
-        Testing --> ExitSuccess: Request succeeds
-        Testing --> ExitFailure: Request fails
+        Testing --> ExitSuccess : Request succeeds
+        Testing --> ExitFailure : Request fails
     }
 ```
 

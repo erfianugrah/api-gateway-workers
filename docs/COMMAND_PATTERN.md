@@ -1,10 +1,10 @@
 # Command Pattern Implementation
 
-This document explains the Command Pattern implementation in the API Gateway Workers project, providing a detailed overview of the architecture, components, and usage patterns.
+This document explains the Command Pattern implementation in the API Gateway project, providing a detailed overview of the architecture, components, and usage patterns.
 
 ## Overview
 
-The Command Pattern is a behavioral design pattern that encapsulates a request as an object, allowing for parameterization of clients with different requests, queuing of requests, and logging of operations. In the API Gateway Workers, it forms the backbone of the business logic layer.
+The Command Pattern is a behavioral design pattern that encapsulates a request as an object, allowing for parameterization of clients with different requests, queuing of requests, and logging of operations. In the API Gateway, it forms the backbone of the business logic layer.
 
 ```mermaid
 flowchart TD
