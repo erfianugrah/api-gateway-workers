@@ -205,7 +205,7 @@ graph TD
 | `admin:system:security` | Ability to perform security operations |
 | `admin:system:config` | Ability to view system configuration |
 
-For complete details on role-based access control, see [SECURITY.md](./SECURITY.md).
+For complete details on role-based access control, see [Security Reference](../reference/security-reference.md).
 
 ## API Key Management
 
@@ -1180,7 +1180,7 @@ graph LR
 | 503 | `SERVICE_UNAVAILABLE` | Service temporarily unavailable |
 | 504 | `GATEWAY_TIMEOUT` | Upstream service timeout |
 
-For more detailed information about error handling, see [ERROR_HANDLING.md](./ERROR_HANDLING.md).
+For more detailed information about error handling, see [Error Reference](../reference/error-reference.md).
 
 ## Webhooks
 
@@ -1222,7 +1222,7 @@ sequenceDiagram
 }
 ```
 
-Webhook configuration is done through the system configuration. See [CONFIGURATION.md](./CONFIGURATION.md) for details.
+Webhook configuration is done through the system configuration. See [Configuration Reference](../reference/configuration-reference.md) for details.
 
 ## Rate Limiting
 
@@ -1271,15 +1271,15 @@ flowchart TD
 }
 ```
 
-Rate limits can be configured through the system configuration. See [CONFIGURATION.md](./CONFIGURATION.md) for details.
+Rate limits can be configured through the system configuration. See [Configuration Reference](../reference/configuration-reference.md) for details.
 
 ## Additional Documentation
 
 For more detailed information, refer to these additional documents:
 
-- [Architecture Overview](./ARCHITECTURE.md)
-- [Configuration Guide](./CONFIGURATION.md)
-- [Security Documentation](./SECURITY.md)
-- [Error Handling](./ERROR_HANDLING.md)
-- [Gateway Features](./GATEWAY.md)
-- [Tutorials](./TUTORIALS.md)
+- [Architecture Overview](../architecture/overview.md)
+- [Configuration Reference](../reference/configuration-reference.md)
+- [Security Reference](../reference/security-reference.md)
+- [Error Reference](../reference/error-reference.md)
+- [API Gateway Features](../architecture/api-gateway.md)
+- [Tutorials](../guides/tutorials.md)

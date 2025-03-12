@@ -2,8 +2,6 @@
 
 Welcome to the API Gateway Workers documentation. This hub provides access to all documentation available for the project.
 
-For an overview of how the documentation is organized, see the [Documentation Structure](documentation-structure.md) guide.
-
 ## Documentation Navigation
 
 ### 🚀 Getting Started
@@ -16,7 +14,7 @@ For an overview of how the documentation is organized, see the [Documentation St
 
 - [API Reference](reference/api-reference.md) - Complete API endpoints and usage
 - [Configuration Reference](reference/configuration-reference.md) - All configuration options
-- [Environment Variables Cheatsheet](reference/env-vars-cheatsheet.md) - Quick reference for env vars
+- [Environment Variables Cheatsheet](../reference/env-vars-cheatsheet.md) - Quick reference for env vars
 - [Error Reference](reference/error-reference.md) - Error codes and troubleshooting
 - [Security Reference](reference/security-reference.md) - Security features and implementation
 
@@ -27,6 +25,7 @@ For an overview of how the documentation is organized, see the [Documentation St
 - [Command Pattern](architecture/command-pattern.md) - Command pattern details
 - [Directory Structure](architecture/directory-structure.md) - Codebase organization
 - [API Gateway Features](architecture/api-gateway.md) - Gateway functionality details
+- [Data Models](architecture/data-models.md) - Data structures and storage
 
 ### 👨‍💻 For Contributors
 
@@ -53,7 +52,7 @@ If you're integrating with an existing API Gateway:
 If you're deploying and managing API Gateway:
 1. [Configuration Reference](reference/configuration-reference.md)
 2. [Security Reference](reference/security-reference.md)
-3. [Environment Variables Cheatsheet](reference/env-vars-cheatsheet.md)
+3. [Environment Variables Cheatsheet](../reference/env-vars-cheatsheet.md)
 
 ### Contributors
 If you're contributing to the project:

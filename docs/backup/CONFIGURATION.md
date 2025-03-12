@@ -1377,6 +1377,6 @@ flowchart TD
 
 ## Further Reading
 
-- [API Gateway Documentation](./GATEWAY.md) - For more information on API gateway functionality
-- [Security Guide](./SECURITY.md) - For details on security configuration best practices
+- [API Gateway Features](../architecture/api-gateway.md) - For more information on API gateway functionality
+- [Security Reference](../reference/security-reference.md) - For details on security configuration best practices
 - [OpenAPI Schema](../schemas/config.schema.json) - The complete schema definition for configuration validation

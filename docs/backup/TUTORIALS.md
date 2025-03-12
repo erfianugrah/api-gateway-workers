@@ -2310,7 +2310,7 @@ These tutorials cover the most common use cases for the API Gateway Workers. For
 
 ## Further Reading
 
-- [Configuration Guide](./CONFIGURATION.md) - Detailed configuration options
-- [API Reference](./API.md) - Complete API reference
-- [Security Guide](./SECURITY.md) - Security best practices
-- [Gateway Documentation](./GATEWAY.md) - API Gateway proxy features
+- [Configuration Reference](../reference/configuration-reference.md) - Detailed configuration options
+- [API Reference](../reference/api-reference.md) - Complete API reference
+- [Security Reference](../reference/security-reference.md) - Security best practices
+- [API Gateway Features](../architecture/api-gateway.md) - API Gateway proxy features

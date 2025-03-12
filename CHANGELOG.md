@@ -30,6 +30,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Comprehensive test utilities package
 - Dedicated test files for admin management functions
 - Error handling for storage operations and validation
+- Enhanced configuration system with OpenAPI schema validation
+- Configuration loading from files and environment variables
+- Example configuration files with documentation
 
 ### Fixed
 - IP address extraction security vulnerability
@@ -49,6 +52,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enhanced admin management with better error handling
 - Moved to command pattern for business logic organization
 - Improved test coverage (264 passing tests)
+- Improved configuration flexibility with layered configuration system
+- Enhanced documentation with configuration examples and schema details
 
 ## [1.0.0] - 2023-12-15
 

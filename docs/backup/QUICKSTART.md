@@ -166,7 +166,7 @@ wrangler secret put ENCRYPTION_KEY
 wrangler secret put HMAC_SECRET
 ```
 
-For more details, see the [Configuration documentation](./CONFIGURATION.md).
+For more details, see the [Configuration Reference](../reference/configuration-reference.md).
 
 ## Local Development
 
@@ -1135,10 +1135,10 @@ mindmap
             Pull Requests
 ```
 
-- Read the full [API documentation](./API.md)
-- Learn about the [architecture](./ARCHITECTURE.md)
-- Understand the [security implementation](./SECURITY.md)
-- See how to [contribute](../CONTRIBUTING.md)
+- Read the full [API Reference](../reference/api-reference.md)
+- Learn about the [Architecture Overview](../architecture/overview.md)
+- Understand the [Security Reference](../reference/security-reference.md)
+- See how to [Contributing Guide](../development/contributing.md)
 
 ## Troubleshooting
 

@@ -659,8 +659,8 @@ This architecture makes it easy to add new functionality by simply adding new co
 
 ## Further Reading
 
-- [API Gateway Documentation](./API.md)
-- [Architecture Overview](./ARCHITECTURE.md)
-- [Testing Guide](./TESTING_GUIDE.md)
+- [API Reference](../reference/api-reference.md)
+- [Architecture Overview](../architecture/overview.md)
+- [Testing Guide](../development/testing.md)
 - [Command Pattern (Martin Fowler)](https://martinfowler.com/bliki/CommandQuerySeparation.html)
 - [CQRS Pattern (Microsoft)](https://docs.microsoft.com/en-us/azure/architecture/patterns/cqrs)

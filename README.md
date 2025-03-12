@@ -68,456 +68,99 @@ flowchart TB
     style J fill:#337788,stroke:#88aacc,stroke-width:2px,color:#ffffff
 ```
 
-### Project Structure
-
-The project follows Clean Architecture principles with distinct layers:
-
-```
-api-gateway-workers/
-├── src/                           # Source code
-│   ├── api/                       # API Layer
-│   │   ├── controllers/           # Request handling and responses
-│   │   │   ├── BaseController.js  # Base controller with common functionality
-│   │   │   ├── KeysController.js  # Key management API
-│   │   │   ├── SystemController.js # System operations
-│   │   │   └── ValidationController.js # Key validation
-│   │   └── middleware/            # HTTP middleware
-│   │       ├── authMiddleware.js  # Authentication middleware
-│   │       ├── corsMiddleware.js  # CORS support
-│   │       ├── errorHandler.js    # Error handling
-│   │       └── responseMiddleware.js # Response formatting
-│   ├── auth/                      # Legacy Authentication system
-│   │   ├── adminManager.js        # Admin user management
-│   │   ├── auditLogger.js         # Audit logging
-│   │   ├── index.js               # Auth module exports
-│   │   ├── keyGenerator.js        # Key generation
-│   │   ├── keyValidator.js        # Key validation
-│   │   └── roles.js               # Role definitions
-│   ├── core/                      # Domain and Application Layers
-│   │   ├── audit/                 # Audit functionality
-│   │   │   └── AuditLogger.js     # Audit logging service
-│   │   ├── auth/                  # Authentication domain
-│   │   │   ├── AuthService.js     # Auth service
-│   │   │   └── adapters/          # Auth adapters
-│   │   ├── command/               # Command pattern implementation
-│   │   │   ├── Command.js         # Base command
-│   │   │   ├── CommandBus.js      # Command dispatcher
-│   │   │   └── CommandHandler.js  # Base handler
-│   │   ├── errors/                # Domain errors
-│   │   │   └── ApiError.js        # Error classes
-│   │   ├── keys/                  # Key management domain
-│   │   │   ├── KeyRepository.js   # Repository interface
-│   │   │   ├── KeyService.js      # Domain service
-│   │   │   ├── adapters/          # Repository adapters
-│   │   │   ├── commands/          # Command objects
-│   │   │   └── handlers/          # Command handlers
-│   │   └── security/              # Security services
-│   │       ├── EncryptionService.js # Encryption
-│   │       ├── HmacService.js     # HMAC signatures
-│   │       ├── KeyGenerator.js    # Secure key generation
-│   │       └── RateLimiter.js     # Rate limiting
-│   ├── infrastructure/            # Infrastructure Layer
-│   │   ├── config/                # Configuration
-│   │   │   ├── Config.js          # Config service
-│   │   │   └── setupConfig.js     # Config initialization
-│   │   ├── di/                    # Dependency Injection
-│   │   │   ├── Container.js       # IoC container
-│   │   │   └── setupContainer.js  # Service registration
-│   │   ├── http/                  # HTTP infrastructure
-│   │   │   └── Router.js          # HTTP router
-│   │   └── storage/               # Storage implementations
-│   │       └── DurableObjectRepository.js # DO storage
-│   ├── lib/                       # Integration Layer
-│   │   ├── KeyManagerDurableObject.js # Main Durable Object
-│   │   └── router.js              # Legacy router
-│   ├── models/                    # Legacy business models
-│   │   ├── ApiKeyManager.js       # Key management
-│   │   └── types.js               # Type definitions
-│   ├── utils/                     # Utility functions
-│   │   ├── response.js            # HTTP response formatting
-│   │   ├── security.js            # Security utilities
-│   │   ├── storage.js             # Storage key generation
-│   │   └── validation.js          # Input validation
-│   └── index.js                   # Entry point
-├── test/                          # Test suite
-│   ├── utils/                     # Test utilities
-│   │   ├── index.js               # Main utilities export
-│   │   ├── TestContainer.js       # Test DI container
-│   │   ├── factories.js           # Test data factories
-│   │   └── mocks/                 # Mock implementations
-│   │       ├── storage.js         # Storage mocks
-│   │       ├── services.js        # Service mocks
-│   │       ├── http.js            # HTTP mocks
-│   │       └── cloudflare.js      # Cloudflare mocks
-├── docs/                          # Documentation
-├── schemas/                        # Schema definitions
-│   └── config.schema.json          # Configuration validation schema
-├── config.example.json             # Example configuration file
-└── wrangler.jsonc                  # Cloudflare Workers configuration
-```
-
-## Role-Based Access Control
-
-The service implements role-based access control for administrative operations with predefined roles:
-
-| Role | Description | Key Permissions |
-|------|-------------|-----------------|
-| SUPER_ADMIN | Full system access | admin:keys:*, admin:users:*, admin:system:* |
-| KEY_ADMIN | API key management | admin:keys:create, admin:keys:read, admin:keys:revoke |
-| KEY_VIEWER | Read-only key access | admin:keys:read |
-| USER_ADMIN | Admin user management | admin:users:create, admin:users:read, admin:users:revoke |
-| SUPPORT | Limited support access | admin:keys:read, admin:users:read |
-| CUSTOM | Custom permissions | (as specified during creation) |
-
-Key permission scopes:
-
-| Permission Scope | Description |
-|------------------|-------------|
-| admin:keys:create | Create new API keys |
-| admin:keys:read | View API keys |
-| admin:keys:update | Update API key properties (including rotation) |
-| admin:keys:revoke | Revoke API keys |
-| admin:keys:* | Full access to key management |
-| admin:users:create | Create new admin users |
-| admin:users:read | View admin users |
-| admin:users:revoke | Revoke admin user access |
-| admin:users:* | Full access to user management |
-| admin:system:logs | View system logs |
-| admin:system:maintenance | Perform system maintenance |
-| admin:system:security | Manage security settings and keys |
-| admin:system:* | Full access to system management |
-
-## API Endpoints
-
-### System Setup
-
-```
-POST /setup
-```
-Performs first-time setup of the service, creating the initial super admin.
-
-### API Key Management
-
-```
-POST /keys
-GET /keys
-GET /keys/:id
-DELETE /keys/:id
-POST /keys/:id/rotate
-GET /keys-cursor
-```
-
-### Key Validation
-
-```
-POST /validate
-```
-
-### System Maintenance
-
-```
-GET /health
-POST /maintenance/cleanup
-POST /maintenance/rotate-keys
-```
-
-### Audit Logs
-
-```
-GET /logs/admin
-```
-
-Detailed API documentation is available in the [API.md](./docs/API.md) file.
-
-## Security Features
-
-### Encryption at Rest
-
-API keys are securely encrypted using AES-GCM encryption:
-
-- 256-bit encryption key derived using PBKDF2
-- Unique salt and IV for each key
-- Authenticated encryption to prevent tampering
-- Version field to support algorithm upgrades
-- Support for key rotation without service disruption
-
-### HMAC Signature Verification
-
-All API keys have associated HMAC signatures for additional security:
-
-- SHA-384 HMAC signatures
-- Separate storage of signatures and key data
-- Validation during key verification
-- Support for HMAC secret rotation
-
-### Key Rotation
-
-Two types of key rotation are supported:
-
-1. **API Key Rotation**:
-   - Create a new key while keeping the old one valid during a grace period
-   - Configurable grace period (default: 30 days)
-   - Warning indicators for clients using old keys
-
-2. **Cryptographic Material Rotation**:
-   - Rotate the underlying encryption and HMAC secrets
-   - Reencrypt all keys with new material
-   - Update all HMAC signatures
-
-### Comprehensive Audit Logging
-
-All administrative actions are logged for accountability:
-
-- Who performed the action (admin ID, IP address, user agent)
-- What action was performed (with detailed context)
-- When the action occurred (timestamp)
-- Special handling for security-critical operations
-
-## Deployment
-
-### Prerequisites
-- Cloudflare account with Workers enabled
-- Node.js and npm installed
-
-### Environment Setup
-
-1. Create KV namespaces for different environments:
-   ```bash
-   # Create KV namespace for production
-   wrangler kv:namespace create "KEYS"
-   
-   # Create KV namespace for staging
-   wrangler kv:namespace create "KEYS" --env staging
-   
-   # Create KV namespace for development
-   wrangler kv:namespace create "KEYS" --env development
-   ```
-
-2. Set secret environment variables for production:
-   ```bash
-   # Generate secure random values for these secrets
-   wrangler secret put ENCRYPTION_KEY
-   wrangler secret put HMAC_SECRET
-   ```
-
-### Configuration System
-
-The API Gateway supports a comprehensive configuration system with multiple options:
-
-#### JSON Configuration File
-You can provide a JSON configuration file:
+## Quick Start
 
 ```bash
-# Specify configuration file path
-CONFIG_PATH=/path/to/config.json npm run dev
-```
+# Install dependencies
+npm install
 
-#### Environment Variables
-All configuration options can be set via environment variables with a `CONFIG_` prefix:
-
-```bash
-# Set configuration via environment variables
-CONFIG_LOGGING_LEVEL=debug CONFIG_SECURITY_API_KEY_HEADER=X-Custom-Key npm run dev
-```
-
-Environment variables use underscore notation and are converted to the appropriate nested structure.
-
-#### Configuration System
-
-The API Gateway includes a comprehensive configuration system with:
-
-- **OpenAPI Schema Validation**: All configuration is validated against an OpenAPI schema
-- **Environment Detection**: Different validation rules for development and production
-- **Multiple Configuration Sources**: 
-  - JSON configuration files
-  - Environment variables with `CONFIG_` prefix
-  - Default values from schema
-- **Complex Type Support**: Structured environment variables for complex objects
-- **Production Safeguards**: Prevents insecure configurations in production
-
-##### Core Configuration
-- `encryption.key`: Secret key for encrypting API keys at rest (required in production)
-- `hmac.secret`: Secret for generating HMAC signatures (required in production)
-
-##### Security Configuration
-- `security.cors`: CORS settings (origin, methods, headers, etc.)
-- `security.apiKeyHeader`: Header name for API key authentication
-- `security.headers`: Security headers added to all responses
-
-##### API Configuration
-- `routing.versioning`: API version management
-- `routing.paramValidation`: Regular expressions for parameter validation
-- `routing.priority`: Route matching priority configuration
-
-##### Proxy Configuration
-- `proxy.enabled`: Enable/disable proxy functionality
-- `proxy.timeout`: Default timeout for proxied requests
-- `proxy.retry`: Controls for retrying failed requests
-- `proxy.circuitBreaker`: Circuit breaker pattern for fault tolerance
-- `proxy.services`: Upstream service configurations
-
-##### Additional Settings
-- `logging`: Log levels, stack traces, and request tracking
-- `rateLimit`: Request rate limiting with per-endpoint configuration
-- `maintenance`: Scheduled tasks and maintenance operations
-
-Example Configuration Files:
-- `config.example.json`: General example with all options
-- `config.development.example.json`: Development environment settings
-- `config.production.example.json`: Production environment settings 
-
-For complete details, see the [Configuration Guide](./docs/CONFIGURATION.md) and [Environment Variables Cheatsheet](./docs/env-vars-cheatsheet.md).
-
-### Deployment Steps
-
-1. Set up Wrangler CLI:
-   ```bash
-   npm install -g wrangler
-   ```
-
-2. Authenticate with Cloudflare:
-   ```bash
-   wrangler login
-   ```
-
-3. Deploy to Cloudflare:
-   ```bash
-   npm run deploy
-   ```
-
-## Local Development
-
-Start a local development server:
-```bash
+# Start local development server
 npm run dev
-```
 
-The server will be available at http://localhost:8787.
-
-### First-Time Setup
-
-When you first deploy the service, you need to create the initial super admin:
-
-```bash
+# First-time setup to create admin user
 curl -X POST http://localhost:8787/setup \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Super Admin",
     "email": "admin@example.com"
   }'
+
+# Deploy to Cloudflare
+npm run deploy
 ```
 
-Save the returned API key securely - it will only be shown once!
-
-## Testing
-
-This project includes comprehensive unit tests, advanced security tests, and integration tests.
-
-### Test Utilities Package
-
-The project provides a comprehensive test utilities package that simplifies writing tests by providing:
-
-- **TestContainer**: Dependency injection container with pre-configured mocks
-- **Mock Factories**: Easy creation of mock objects for services, storage, HTTP, etc.
-- **Test Environment Setup**: Utilities for mocking time, crypto, and other environment aspects
-- **Test Data Factories**: Generate test data consistently across tests
-
-For more details, see the [test utilities documentation](./test/utils/README.md).
-
-### Unit Tests
-
-Run all unit tests:
-```bash
-npm test
-```
-
-Watch mode for development:
-```bash
-npm run test:watch
-```
-
-Generate test coverage report:
-```bash
-npm run test:coverage
-```
-
-### Integration Tests
-
-Run the integration tests:
-```bash
-npm run test:integration
-```
-
-### Run All Tests
-
-To run both unit and integration tests:
-```bash
-npm run test:all
-```
-
-## Security Considerations
-
-- **One-Time Display**: API keys are only returned once at creation time
-- **Secure Storage**: Keys are encrypted at rest using AES-GCM
-- **HMAC Verification**: Additional signature verification prevents forgery
-- **Permission Scopes**: Keys can be scoped to limit permissions
-- **Auto Expiration**: Keys can be set to automatically expire
-- **Usage Tracking**: Key usage is tracked for audit purposes
-- **Immediate Revocation**: Revoked keys are immediately invalidated
-- **Rate Limiting**: Protects against brute force and DoS attacks
-- **Input Validation**: Strict validation prevents injection attacks
-- **Header Validation**: Secure IP extraction prevents spoofing
-- **Concurrent Safety**: Operations are safe under high concurrency
-- **Comprehensive Logging**: All admin actions are logged for accountability
+For detailed setup instructions, see the [Quick Start Guide](./docs/guides/quick-start.md).
 
 ## Documentation
 
-Detailed documentation is available in the `docs/` folder:
+Comprehensive documentation is available in the `docs/` folder:
 
-- [API Reference](./docs/API.md) - Detailed API documentation
-- [Gateway Features](./docs/GATEWAY.md) - API Gateway functionality and implementation
-- [Configuration Guide](./docs/CONFIGURATION.md) - Comprehensive configuration options
-- [Environment Variables Cheatsheet](./docs/env-vars-cheatsheet.md) - Quick reference for configuration variables
-- [Configuration Roadmap](./docs/CONFIGURATION_ROADMAP.md) - Future plans for configuration system
-- [Architecture](./docs/ARCHITECTURE.md) - System design and component interaction
-- [Security Implementation](./docs/SECURITY.md) - Security features and considerations
-- [Quick Start Guide](./docs/QUICKSTART.md) - Get up and running quickly
-- [Code Organization](./docs/ORGANIZATION.md) - Codebase structure and organization
-- [Testing Guide](./docs/TESTING_GUIDE.md) - Instructions for testing
-- [Integration Guide](./docs/INTEGRATION_GUIDE.md) - Integrating with existing systems
-- [Improvements](./docs/IMPROVEMENTS.md) - Summary of recent improvements
-- [Contributing Guide](./CONTRIBUTING.md) - How to contribute to the project
+### Guides
+- [Quick Start Guide](./docs/guides/quick-start.md) - Set up and run your first API Gateway
+- [Tutorials](./docs/guides/tutorials.md) - Step-by-step guides for common scenarios
+- [Integration Guide](./docs/guides/integration-guide.md) - Integrate with client applications
+- [Configuration Guide](./docs/guides/configuration-guide.md) - How to configure the API Gateway
+
+### Reference
+- [API Reference](./docs/reference/api-reference.md) - Complete API endpoints and usage
+- [Configuration Reference](./docs/reference/configuration-reference.md) - All configuration options
+- [Environment Variables Cheatsheet](./docs/reference/env-vars-cheatsheet.md) - Quick reference for env vars
+- [Error Reference](./docs/reference/error-reference.md) - Error codes and troubleshooting
+- [Security Reference](./docs/reference/security-reference.md) - Security features and implementation
+
+### Architecture
+- [Architecture Overview](./docs/architecture/overview.md) - High-level system architecture
+- [Clean Architecture](./docs/architecture/clean-architecture.md) - Clean architecture implementation
+- [Command Pattern](./docs/architecture/command-pattern.md) - Command pattern details
+- [Directory Structure](./docs/architecture/directory-structure.md) - Codebase organization
+- [API Gateway Features](./docs/architecture/api-gateway.md) - Gateway functionality details
+
+### For Contributors
+- [Contributing Guide](./docs/development/contributing.md) - How to contribute to the project
+- [Testing Guide](./docs/development/testing.md) - Testing approaches and practices
+- [Improvements](./docs/development/improvements.md) - Planned improvements
+- [Development Roadmap](./docs/development/roadmap.md) - Future development plans
+
+### Project Status
 - [Changelog](./CHANGELOG.md) - Version history and changes
 
-## Future Enhancements
+For a complete documentation index, see the [Documentation Hub](./docs/README.md).
 
-### Short-term
-- Web-based admin dashboard for key management
-- Enhanced metrics and usage analytics
-- Webhook notifications for key events
-- Multi-region consistency improvements
-- OAuth integration for admin authentication
+## Security Features
 
-### API Gateway Roadmap
+The API Gateway includes comprehensive security features:
 
-This project has already implemented Phase 1 of its evolution into a full-fledged API gateway, with plans for further enhancements:
+- **Encryption at Rest**: AES-GCM encryption for API keys
+- **HMAC Signature Verification**: Additional signature validation
+- **Key Rotation**: Support for both API key and cryptographic material rotation
+- **Comprehensive Audit Logging**: Tracking of all administrative actions
+- **Input Validation**: Strict validation to prevent injection attacks
+- **Rate Limiting**: Protection against brute force and DoS attacks
 
-#### Phase 1: Foundation (✅ Implemented)
+For details, see the [Security Reference](./docs/reference/security-reference.md).
+
+## API Gateway Roadmap
+
+This project has implemented Phase 1 of its evolution into a full-fledged API gateway, with plans for further enhancements:
+
+### Phase 1: Foundation (✅ Implemented)
 - ✅ Improved request routing with regex patterns and path variables
 - ✅ Enhanced path parameter validation
 - ✅ API versioning support
 - ✅ Proxy functionality for backend services with fault tolerance
 
-#### Phase 2: Advanced Features (In Progress)
+### Phase 2: Advanced Features (In Progress)
 - ⬜ Service discovery and registration system
 - ⬜ Load balancing across multiple backend services
 - ⬜ Advanced request/response transformation capabilities
 - ⬜ Enhanced traffic management (throttling, circuit breaking)
 
-#### Phase 3: Enterprise Capabilities (Planned)
+### Phase 3: Enterprise Capabilities (Planned)
 - ⬜ Support for multiple protocols (gRPC, WebSockets)
 - ⬜ API composition and aggregation
 - ⬜ Performance analytics dashboard
 - ⬜ Blue/green and canary deployment capabilities
 
-For detailed documentation on the gateway features, see [GATEWAY.md](./docs/GATEWAY.md).
+## License
+
+[MIT](LICENSE)

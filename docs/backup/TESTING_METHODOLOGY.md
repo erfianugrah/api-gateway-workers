@@ -2023,5 +2023,5 @@ As you add new features or modify existing ones, remember to update the tests ac
 - [Testing JavaScript Applications](https://testing-library.com/docs/)
 - [Clean Code in JavaScript](https://github.com/ryanmcdermott/clean-code-javascript)
 - [Property-Based Testing with fast-check](https://github.com/dubzzz/fast-check)
-- [API Gateway CONTRIBUTING Guide](./CONTRIBUTING.md)
+- [Contributing Guide](../development/contributing.md)
 - [Pact.js for Contract Testing](https://github.com/pact-foundation/pact-js)

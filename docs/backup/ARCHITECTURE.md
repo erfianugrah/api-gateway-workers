@@ -1428,7 +1428,7 @@ The gateway functionality provides API proxying with advanced features:
 
 ## Security Design
 
-See [SECURITY.md](./SECURITY.md) for detailed security implementation information.
+See [Security Reference](../reference/security-reference.md) for detailed security implementation information.
 
 ```mermaid
 graph TB

@@ -786,7 +786,7 @@ The error handling system in the API Gateway Workers is designed to provide cons
 
 ## Further Reading
 
-- [API Documentation](./API.md) - Complete API reference
-- [Security Guide](./SECURITY.md) - Security best practices
+- [API Reference](../reference/api-reference.md) - Complete API reference
+- [Security Reference](../reference/security-reference.md) - Security best practices
 - [Logging Guide](./LOGGING.md) - Detailed logging information
-- [Proxy Documentation](./GATEWAY.md) - API Gateway proxy features
+- [API Gateway Features](../architecture/api-gateway.md) - API Gateway proxy features

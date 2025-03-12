@@ -178,4 +178,4 @@ CONFIG_LOGGING_LEVEL="error"
 CONFIG_LOGGING_INCLUDETRACE="false"
 ```
 
-For a complete reference of all available configuration options, see the [Configuration Guide](./configuration.md).
+For a complete reference of all available configuration options, see the [Configuration Guide](../guides/configuration-guide.md).
