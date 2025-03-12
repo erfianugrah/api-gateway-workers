@@ -49,7 +49,8 @@ npm run test:coverage
 
 ### Coding Standards
 
-- All code should be formatted with Prettier using the project's configuration
+- All code should follow ESLint rules defined in the project's `.eslintrc.json`
+- Run linting checks with `npm run lint` and fix issues with `npm run lint:fix`
 - Follow the existing code style and patterns
 - Use meaningful variable and function names
 - Write comments for complex logic
@@ -58,12 +59,13 @@ npm run test:coverage
 ## Pull Request Process
 
 1. Update the documentation to reflect any changes
-2. Ensure all tests pass successfully
-3. Add tests for new functionality
-4. Make sure your code follows the project's coding standards
-5. Squash multiple commits into a single meaningful commit
-6. Create a pull request with a clear description of the changes
-7. Reference any relevant issues in the pull request
+2. Ensure all tests pass successfully with `npm test`
+3. Verify code passes linting with `npm run lint`
+4. Add tests for new functionality
+5. Make sure your code follows the project's coding standards
+6. Squash multiple commits into a single meaningful commit
+7. Create a pull request with a clear description of the changes
+8. Reference any relevant issues in the pull request
 
 ## Security Considerations
 

@@ -32,6 +32,7 @@ For an overview of how the documentation is organized, see the [Documentation St
 
 - [Contributing Guide](development/contributing.md) - How to contribute to the project
 - [Testing Guide](development/testing.md) - Testing approaches and practices
+- [Code Style and Linting](development/contributing.md#coding-standards) - Code style guidelines and ESLint configuration
 - [Improvements](development/improvements.md) - Planned improvements
 - [Development Roadmap](development/roadmap.md) - Future development plans
 
@@ -58,9 +59,10 @@ If you're deploying and managing API Gateway:
 ### Contributors
 If you're contributing to the project:
 1. [Contributing Guide](development/contributing.md)
-2. [Architecture Overview](architecture/overview.md)
-3. [Directory Structure](architecture/directory-structure.md)
-4. [Testing Guide](development/testing.md)
+2. [Code Style and Linting](development/contributing.md#coding-standards)
+3. [Architecture Overview](architecture/overview.md)
+4. [Directory Structure](architecture/directory-structure.md)
+5. [Testing Guide](development/testing.md)
 
 ## Additional Resources
 
