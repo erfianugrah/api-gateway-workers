@@ -28,6 +28,7 @@ export class AuditLogger {
     // Get client IP if request is provided
     let clientIp = "unknown";
     let userAgent = "unknown";
+
     if (request) {
       clientIp = this.getClientIp(request);
       userAgent = request.headers.get("User-Agent") || "unknown";
@@ -49,6 +50,7 @@ export class AuditLogger {
 
     // Store index by admin ID for quick lookups
     const timeKey = `${Date.now().toString().padStart(16, "0")}_${logId}`;
+
     await this.storage.put(`log:admin:by_admin:${adminId}:${timeKey}`, logId);
 
     // Store index by action type
@@ -73,7 +75,7 @@ export class AuditLogger {
    */
   async getAdminLogs(adminId, options = {}) {
     const limit = options.limit || 50;
-    let cursor = options.cursor || "";
+    const cursor = options.cursor || "";
 
     // List logs for the admin
     const logIndices = await this.storage.list({
@@ -106,7 +108,7 @@ export class AuditLogger {
         }
 
         return JSON.parse(logData);
-      }),
+      })
     );
 
     // Filter out any nulls
@@ -130,7 +132,7 @@ export class AuditLogger {
    */
   async getActionLogs(action, options = {}) {
     const limit = options.limit || 50;
-    let cursor = options.cursor || "";
+    const cursor = options.cursor || "";
 
     // List logs for the action
     const logIndices = await this.storage.list({
@@ -163,7 +165,7 @@ export class AuditLogger {
         }
 
         return JSON.parse(logData);
-      }),
+      })
     );
 
     // Filter out any nulls
@@ -186,7 +188,7 @@ export class AuditLogger {
    */
   async getCriticalLogs(options = {}) {
     const limit = options.limit || 50;
-    let cursor = options.cursor || "";
+    const cursor = options.cursor || "";
 
     // List critical logs
     const logIndices = await this.storage.list({
@@ -219,7 +221,7 @@ export class AuditLogger {
         }
 
         return JSON.parse(logData);
-      }),
+      })
     );
 
     // Filter out any nulls
@@ -264,12 +266,14 @@ export class AuditLogger {
   getClientIp(request) {
     // Try to get IP from Cloudflare headers
     const cfIp = request.headers.get("CF-Connecting-IP");
+
     if (cfIp) {
       return cfIp;
     }
 
     // Fall back to X-Forwarded-For
     const forwardedFor = request.headers.get("X-Forwarded-For");
+
     if (forwardedFor) {
       // Extract first IP from list
       return forwardedFor.split(",")[0].trim();

@@ -32,11 +32,13 @@ describe("Admin Manager", () => {
       put: jest.fn(async (key, value) => kvStorage.data.set(key, value)),
       list: jest.fn(async ({ prefix }) => {
         const keys = [];
+
         for (const [key, value] of kvStorage.data.entries()) {
           if (key.startsWith(prefix)) {
             keys.push({ name: key, value });
           }
         }
+
         return { keys };
       }),
     };
@@ -51,12 +53,14 @@ describe("Admin Manager", () => {
       mockEnv.KV.data.set("system:setup_completed", "true");
 
       const result = await isSetupCompleted(mockEnv);
+
       expect(result).toBe(true);
     });
 
     it("should return false if setup is not completed", async () => {
       // No setup data in KV
       const result = await isSetupCompleted(mockEnv);
+
       expect(result).toBe(false);
     });
   });
@@ -74,7 +78,7 @@ describe("Admin Manager", () => {
 
       // Expect setup to throw error
       await expect(setupFirstAdmin(adminData, mockEnv)).rejects.toThrow(
-        "Setup has already been completed",
+        "Setup has already been completed"
       );
     });
 
@@ -85,7 +89,7 @@ describe("Admin Manager", () => {
       };
 
       await expect(setupFirstAdmin(incompleteData, mockEnv)).rejects.toThrow(
-        "Name and email are required",
+        "Name and email are required"
       );
     });
   });
@@ -99,7 +103,7 @@ describe("Admin Manager", () => {
       };
 
       await expect(createAdminKey(incompleteData, mockEnv)).rejects.toThrow(
-        "Name and email are required",
+        "Name and email are required"
       );
     });
 
@@ -111,7 +115,7 @@ describe("Admin Manager", () => {
       };
 
       await expect(createAdminKey(invalidData, mockEnv)).rejects.toThrow(
-        "Invalid role",
+        "Invalid role"
       );
     });
 
@@ -125,7 +129,7 @@ describe("Admin Manager", () => {
       };
 
       await expect(createAdminKey(invalidScopesData, mockEnv)).rejects.toThrow(
-        "Invalid admin scopes",
+        "Invalid admin scopes"
       );
     });
   });
@@ -142,7 +146,7 @@ describe("Admin Manager", () => {
           email: "test@example.com",
           role: "KEY_ADMIN",
           scopes: ["admin:keys:read"],
-        }),
+        })
       );
 
       const result = await getAdminKey("test-admin-id", mockEnv);
@@ -161,15 +165,17 @@ describe("Admin Manager", () => {
           id: "regular-key-id",
           name: "Regular Key",
           scopes: ["read:data"],
-        }),
+        })
       );
 
       const result = await getAdminKey("regular-key-id", mockEnv);
+
       expect(result).toBeNull();
     });
 
     it("should return null for non-existent keys", async () => {
       const result = await getAdminKey("non-existent-id", mockEnv);
+
       expect(result).toBeNull();
     });
 
@@ -178,6 +184,7 @@ describe("Admin Manager", () => {
       mockEnv.KV.data.set("index:admin:missing-key-id", "missing-key-id");
 
       const result = await getAdminKey("missing-key-id", mockEnv);
+
       expect(result).toBeNull();
     });
   });
@@ -194,7 +201,7 @@ describe("Admin Manager", () => {
             name: `Admin ${id}`,
             role: "KEY_ADMIN",
             scopes: ["admin:keys:read"],
-          }),
+          })
         );
       });
     });
@@ -225,6 +232,7 @@ describe("Admin Manager", () => {
       mockEnv.KV.data = new Map();
 
       const result = await listAdminKeys(mockEnv);
+
       expect(result).toEqual([]);
     });
 
@@ -249,7 +257,7 @@ describe("Admin Manager", () => {
             role: "KEY_ADMIN",
             scopes: ["admin:keys:read"],
             createdAt: key.createdAt,
-          }),
+          })
         );
       });
 
@@ -277,7 +285,7 @@ describe("Admin Manager", () => {
           role: "KEY_ADMIN",
           status: "active",
           scopes: ["admin:keys:read"],
-        }),
+        })
       );
     });
 
@@ -290,14 +298,14 @@ describe("Admin Manager", () => {
           id: "test-admin-id",
           name: "Test Admin",
           status: "revoked",
-        }),
+        })
       );
 
       const result = await revokeAdminKey(
         "test-admin-id",
         "revoker-id",
         "Reason",
-        mockEnv,
+        mockEnv
       );
 
       expect(result.success).toBe(true);
@@ -306,7 +314,7 @@ describe("Admin Manager", () => {
 
     it("should throw error for non-existent keys", async () => {
       await expect(
-        revokeAdminKey("non-existent-id", "revoker-id", "Reason", mockEnv),
+        revokeAdminKey("non-existent-id", "revoker-id", "Reason", mockEnv)
       ).rejects.toThrow("Admin key not found");
     });
 
@@ -316,7 +324,7 @@ describe("Admin Manager", () => {
       // Don't add the key data
 
       await expect(
-        revokeAdminKey("broken-id", "revoker-id", "Reason", mockEnv),
+        revokeAdminKey("broken-id", "revoker-id", "Reason", mockEnv)
       ).rejects.toThrow("Admin key not found");
     });
 
@@ -325,13 +333,14 @@ describe("Admin Manager", () => {
         "test-admin-id",
         "revoker-id",
         null, // No reason
-        mockEnv,
+        mockEnv
       );
 
       // Key should be revoked with default reason
       const updatedKey = JSON.parse(
-        mockEnv.KV.data.get("key:test-admin-id"),
+        mockEnv.KV.data.get("key:test-admin-id")
       );
+
       expect(updatedKey.status).toBe("revoked");
       expect(updatedKey.revokedReason).toBe("Administrative action");
     });

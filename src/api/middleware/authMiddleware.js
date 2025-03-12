@@ -13,9 +13,9 @@ import {
 export function createAuthMiddleware(authService, requiredPermission = null) {
   return async (request, env) => {
     // Extract API key from header using configurable header name
-    const apiKeyHeader = authService.config ? 
-      authService.config.get('security.apiKeyHeader', 'X-Api-Key') : 
-      'X-Api-Key';
+    const apiKeyHeader = authService.config ?
+      authService.config.get("security.apiKeyHeader", "X-Api-Key") :
+      "X-Api-Key";
     const apiKey = request.headers.get(apiKeyHeader);
 
     // Authenticate the request

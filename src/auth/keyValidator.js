@@ -20,26 +20,30 @@ export async function validateApiKey(apiKey, requiredScopes = [], env) {
   try {
     // Look up the key
     let keyId;
+
     try {
       keyId = await env.KV.get(`lookup:${apiKey}`);
     } catch (error) {
       console.error("Error looking up key:", error);
+
       return { valid: false, error: `Storage error: ${error.message}` };
     }
-    
+
     if (!keyId) {
       return { valid: false, error: "Invalid API key" };
     }
 
     // Get key data
     let keyDataJson;
+
     try {
       keyDataJson = await env.KV.get(`key:${keyId}`);
     } catch (error) {
       console.error("Error fetching key data:", error);
+
       return { valid: false, error: `Storage error: ${error.message}` };
     }
-    
+
     if (!keyDataJson) {
       // Clean up the stale lookup entry
       try {
@@ -47,6 +51,7 @@ export async function validateApiKey(apiKey, requiredScopes = [], env) {
       } catch (error) {
         console.error("Failed to delete stale lookup:", error);
       }
+
       return { valid: false, error: "Key data not found" };
     }
 
@@ -68,6 +73,7 @@ export async function validateApiKey(apiKey, requiredScopes = [], env) {
       } catch (error) {
         console.error("Failed to revoke expired key:", error);
       }
+
       return { valid: false, error: "API key has expired" };
     }
 
@@ -79,7 +85,7 @@ export async function validateApiKey(apiKey, requiredScopes = [], env) {
       for (const requiredScope of requiredScopes) {
         // Skip empty scopes
         if (!requiredScope) continue;
-        
+
         // Check if the key has this scope directly or via a wildcard
         if (!hasScope({ valid: true, scopes: keyData.scopes }, requiredScope)) {
           missingScopes.push(requiredScope);
@@ -117,6 +123,7 @@ export async function validateApiKey(apiKey, requiredScopes = [], env) {
     };
   } catch (error) {
     console.error("Key validation error:", error);
+
     return {
       valid: false,
       error: `Validation error: ${error.message}`,
@@ -135,7 +142,7 @@ export function hasScope(validatedKey, requiredScope) {
   if (!validatedKey || !validatedKey.valid || !validatedKey.scopes) {
     return false;
   }
-  
+
   // If requiredScope is empty or undefined, allow access
   if (!requiredScope) {
     return true;
@@ -164,6 +171,7 @@ export function hasScope(validatedKey, requiredScope) {
     // Section wildcard match (e.g., admin:keys:*)
     if (normalizedScope.endsWith(":*")) {
       const baseScope = normalizedScope.slice(0, -1);
+
       if (normalizedRequiredScope.startsWith(baseScope)) {
         return true;
       }
@@ -174,10 +182,11 @@ export function hasScope(validatedKey, requiredScope) {
       // Split both scopes into parts
       const parts = normalizedScope.split(":");
       const requiredParts = normalizedRequiredScope.split(":");
-      
+
       // Only compare if they have the same number of parts
       if (parts.length === requiredParts.length) {
         let match = true;
+
         for (let i = 0; i < parts.length; i++) {
           // If this part is a wildcard, it matches anything
           // Otherwise, the parts must match exactly
@@ -186,6 +195,7 @@ export function hasScope(validatedKey, requiredScope) {
             break;
           }
         }
+
         if (match) {
           return true;
         }

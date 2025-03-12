@@ -1,17 +1,17 @@
 /**
  * Test utilities for Key Manager Workers
  */
-import { TestContainer } from './TestContainer.js';
-import { jest } from '@jest/globals';
+import { TestContainer } from "./TestContainer.js";
+import { jest } from "@jest/globals";
 
 // Re-export factory functions
-export * from './factories.js';
+export * from "./factories.js";
 
 // Re-export mock modules
-export * from './mocks/storage.js';
-export * from './mocks/services.js';
-export * from './mocks/http.js';
-export * from './mocks/cloudflare.js';
+export * from "./mocks/storage.js";
+export * from "./mocks/services.js";
+export * from "./mocks/http.js";
+export * from "./mocks/cloudflare.js";
 
 // Export TestContainer
 export { TestContainer };
@@ -24,9 +24,11 @@ export { TestContainer };
  */
 export function mockTime(timestamp) {
   const originalNow = Date.now;
+
   Date.now = jest.fn().mockReturnValue(timestamp);
-  
+
   const originalDate = global.Date;
+
   global.Date = class extends Date {
     constructor(...args) {
       if (args.length === 0) {
@@ -35,12 +37,12 @@ export function mockTime(timestamp) {
         super(...args);
       }
     }
-    
+
     static now() {
       return timestamp;
     }
   };
-  
+
   // Return a function to restore the original implementation
   return () => {
     Date.now = originalNow;
@@ -50,32 +52,33 @@ export function mockTime(timestamp) {
 
 /**
  * Helper to mock crypto random functions
- * 
+ *
  * @param {Object} options - Crypto mocking options
  * @returns {Function} Function to restore original crypto implementation
  */
 export function mockCrypto(options = {}) {
   const {
-    randomUUID = 'test-uuid-1234',
+    randomUUID = "test-uuid-1234",
     randomValues = true,
   } = options;
-  
+
   const originalCrypto = global.crypto;
-  
+
   global.crypto = {
     ...originalCrypto,
     randomUUID: jest.fn().mockReturnValue(randomUUID),
   };
-  
+
   if (randomValues) {
     global.crypto.getRandomValues = jest.fn().mockImplementation((array) => {
       for (let i = 0; i < array.length; i++) {
         array[i] = (i * 11) % 256; // Deterministic but appears random
       }
+
       return array;
     });
   }
-  
+
   return () => {
     global.crypto = originalCrypto;
   };
@@ -83,7 +86,7 @@ export function mockCrypto(options = {}) {
 
 /**
  * Setup a test environment with common mocks
- * 
+ *
  * @param {Object} options - Setup options
  * @returns {Object} Test setup result with teardown function
  */
@@ -92,14 +95,14 @@ export function setupTestEnvironment(options = {}) {
     mockTimeValue = 1000000,
     mockCryptoOptions = {},
   } = options;
-  
+
   // Setup mocks
   const restoreTime = mockTime(mockTimeValue);
   const restoreCrypto = mockCrypto(mockCryptoOptions);
-  
+
   // Create container with imported TestContainer
   const container = new TestContainer();
-  
+
   // Return setup result
   return {
     container,
@@ -107,6 +110,6 @@ export function setupTestEnvironment(options = {}) {
       restoreTime();
       restoreCrypto();
       jest.restoreAllMocks();
-    }
+    },
   };
 }

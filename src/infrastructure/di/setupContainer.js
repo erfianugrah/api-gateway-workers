@@ -39,47 +39,51 @@ export function setupContainer(state, env) {
 
   // Register configuration
   container.register("config", () => setupConfig(env));
-  
+
   // Register logger
   container.register("logger", (c) => new Logger(c.resolve("config")));
 
   // Register security services
   container.register("encryptionService", (c) => {
     const config = c.resolve("config");
+
     return new EncryptionService(
       config.get("encryption.key"),
-      config.get("env") === "test",
+      config.get("env") === "test"
     );
   });
 
   container.register("hmacService", (c) => {
     const config = c.resolve("config");
+
     return new HmacService(
       config.get("hmac.secret"),
-      config.get("env") === "test",
+      config.get("env") === "test"
     );
   });
 
   container.register("keyGenerator", (c) => {
     const config = c.resolve("config");
+
     return new KeyGenerator(config.get("keys.prefix", "km_"));
   });
 
   container.register("rateLimiter", (c) => {
     const config = c.resolve("config");
+
     return new RateLimiter(state.storage, config.get("rateLimit", {}));
   });
 
   // Register legacy components
   container.register(
     "apiKeyManager",
-    () => new ApiKeyManager(state.storage, env),
+    () => new ApiKeyManager(state.storage, env)
   );
 
   // Register repositories
   container.register(
     "keyRepository",
-    () => new DurableObjectRepository(state.storage),
+    () => new DurableObjectRepository(state.storage)
   );
 
   // Register services
@@ -90,7 +94,7 @@ export function setupContainer(state, env) {
 
   // Register audit logger
   container.register("auditLogger", () => new AuditLogger(state.storage));
-  
+
   // Register proxy service
   container.register("proxyService", (c) => {
     return new ProxyService(c.resolve("config"));
@@ -99,6 +103,7 @@ export function setupContainer(state, env) {
   // Register auth service
   container.register("authService", (c) => {
     const config = c.resolve("config");
+
     return new AuthService(c.resolve("keyService"), {
       hasPermission: (admin, permission) => {
         if (!admin || !admin.scopes) return false;
@@ -119,6 +124,7 @@ export function setupContainer(state, env) {
           // Wildcard match
           if (normalizedScope.endsWith(":*")) {
             const baseScope = normalizedScope.slice(0, -1);
+
             if (normalizedRequired.startsWith(baseScope)) {
               return true;
             }
@@ -142,48 +148,48 @@ export function setupContainer(state, env) {
   container.register(
     "createKeyHandler",
     (c) =>
-      new CreateKeyHandler(c.resolve("keyService"), c.resolve("auditLogger")),
+      new CreateKeyHandler(c.resolve("keyService"), c.resolve("auditLogger"))
   );
 
   container.register(
     "revokeKeyHandler",
     (c) =>
-      new RevokeKeyHandler(c.resolve("keyService"), c.resolve("auditLogger")),
+      new RevokeKeyHandler(c.resolve("keyService"), c.resolve("auditLogger"))
   );
 
   container.register(
     "rotateKeyHandler",
     (c) =>
-      new RotateKeyHandler(c.resolve("keyService"), c.resolve("auditLogger")),
+      new RotateKeyHandler(c.resolve("keyService"), c.resolve("auditLogger"))
   );
 
   container.register(
     "validateKeyHandler",
-    (c) => new ValidateKeyHandler(c.resolve("keyService")),
+    (c) => new ValidateKeyHandler(c.resolve("keyService"))
   );
 
   container.register(
     "getKeyHandler",
     (c) =>
-      new GetKeyHandler(c.resolve("keyService"), c.resolve("auditLogger")),
+      new GetKeyHandler(c.resolve("keyService"), c.resolve("auditLogger"))
   );
 
   container.register(
     "listKeysHandler",
     (c) =>
-      new ListKeysHandler(c.resolve("keyService"), c.resolve("auditLogger")),
+      new ListKeysHandler(c.resolve("keyService"), c.resolve("auditLogger"))
   );
 
   container.register(
     "listKeysWithCursorHandler",
     (c) =>
-      new ListKeysWithCursorHandler(c.resolve("keyService"), c.resolve("auditLogger")),
+      new ListKeysWithCursorHandler(c.resolve("keyService"), c.resolve("auditLogger"))
   );
 
   container.register(
     "cleanupExpiredKeysHandler",
     (c) =>
-      new CleanupExpiredKeysHandler(c.resolve("keyService"), c.resolve("auditLogger")),
+      new CleanupExpiredKeysHandler(c.resolve("keyService"), c.resolve("auditLogger"))
   );
 
   // Register command bus
@@ -203,18 +209,20 @@ export function setupContainer(state, env) {
   // Register middleware
   container.register("corsMiddleware", (c) => {
     const config = c.resolve("config");
+
     return createCorsMiddleware({ config });
   });
 
   container.register("responseMiddleware", (c) => {
     const config = c.resolve("config");
+
     return createResponseMiddleware({
       config,
       cors: config.get("security.cors", {}),
       security: config.get("security.headers", {}),
     });
   });
-  
+
   container.register("errorHandler", (c) => {
     return createErrorHandler(c.resolve("logger"));
   });

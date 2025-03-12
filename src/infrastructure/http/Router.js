@@ -4,7 +4,7 @@
 export class Router {
   /**
    * Create a new router
-   * 
+   *
    * @param {Config} [config] - Optional configuration instance
    */
   constructor(config = null) {
@@ -22,6 +22,7 @@ export class Router {
    */
   use(middleware) {
     this.globalMiddleware.push(middleware);
+
     return this;
   }
 
@@ -42,7 +43,7 @@ export class Router {
       path,
       handler: mainHandler,
       middleware,
-      isRegex: false
+      isRegex: false,
     });
 
     return this;
@@ -61,7 +62,7 @@ export class Router {
     const middleware = handlers;
 
     if (!(pattern instanceof RegExp)) {
-      throw new Error('Pattern must be a RegExp instance');
+      throw new Error("Pattern must be a RegExp instance");
     }
 
     this.routes.push({
@@ -69,12 +70,12 @@ export class Router {
       path: pattern,
       handler: mainHandler,
       middleware,
-      isRegex: true
+      isRegex: true,
     });
 
     return this;
   }
-  
+
   /**
    * Add a route with pattern from config validation
    *
@@ -87,29 +88,30 @@ export class Router {
    */
   addValidated(method, path, paramType, paramName, ...handlers) {
     if (!this.config) {
-      throw new Error('Config instance required for validated routes');
+      throw new Error("Config instance required for validated routes");
     }
-    
+
     // Get regex pattern from config
     const pattern = this.config.getRegexPattern(paramType);
+
     if (!pattern) {
       throw new Error(`No validation pattern found for '${paramType}'`);
     }
-    
+
     // Convert path with :param to regex pattern
     // Replace :paramName with the regex pattern from config
     const pathRegexStr = path.replace(
-      `:${paramName}`, 
+      `:${paramName}`,
       `(${pattern.source.slice(1, -1)})` // Remove ^ and $ from the pattern
     );
-    
+
     // Create the full regex
     const pathRegex = new RegExp(`^${pathRegexStr}$`);
-    
+
     // Add the route using addRegex
     return this.addRegex(method, pathRegex, ...handlers);
   }
-  
+
   /**
    * Add a versioned API route
    *
@@ -120,29 +122,31 @@ export class Router {
    */
   addVersioned(method, path, ...handlers) {
     if (!this.config) {
-      throw new Error('Config instance required for versioned routes');
+      throw new Error("Config instance required for versioned routes");
     }
-    
+
     const versionInfo = this.config.getVersionInfo();
+
     if (!versionInfo.enabled) {
       // If versioning is disabled, just add the route normally
       return this.add(method, path, ...handlers);
     }
-    
+
     // Add routes for all supported versions
     for (const version of versionInfo.supported) {
       // Use versioning format from config, or default to /v{version}
-      const format = this.config.get('routing.versioning.format', '/v${version}');
-      const versionedPath = format.replace('${version}', version) + path;
+      const format = this.config.get("routing.versioning.format", "/v${version}");
+      const versionedPath = format.replace("${version}", version) + path;
+
       this.add(method, versionedPath, ...handlers);
     }
-    
+
     return this;
   }
-  
+
   /**
    * Add a proxy route to forward requests to an upstream service
-   * 
+   *
    * @param {string} path - URL path pattern to match
    * @param {string} serviceName - Name of the service to proxy to (must be registered in config)
    * @param {Object} options - Proxy options
@@ -152,53 +156,57 @@ export class Router {
    */
   addProxy(path, serviceName, options = {}) {
     if (!this.config) {
-      throw new Error('Config instance required for proxy routes');
+      throw new Error("Config instance required for proxy routes");
     }
-    
+
     // Get the proxy service
     const proxyConfig = this.config.getProxyConfig();
+
     if (!proxyConfig.enabled) {
       console.warn(`Proxy functionality is disabled, but route ${path} is configured to proxy to ${serviceName}`);
     }
-    
+
     // Verify the service exists
     const services = proxyConfig.services || {};
+
     if (!services[serviceName]) {
       throw new Error(`Unknown proxy service: ${serviceName}`);
     }
-    
+
     // Define the proxy handler function
     const proxyHandler = async (request, context) => {
       // Get the proxy service from the context
       const proxyService = context.proxyService;
+
       if (!proxyService) {
         return new Response(
-          JSON.stringify({ error: 'Proxy service not available' }),
-          { status: 500, headers: { 'Content-Type': 'application/json' }}
+          JSON.stringify({ error: "Proxy service not available" }),
+          { status: 500, headers: { "Content-Type": "application/json" } }
         );
       }
-      
+
       // Get the path to proxy
       let proxyPath = new URL(request.url).pathname;
-      
+
       // Remove prefix if specified
       if (options.stripPrefix) {
-        proxyPath = proxyPath.replace(new RegExp(`^${options.stripPrefix}`), '');
+        proxyPath = proxyPath.replace(new RegExp(`^${options.stripPrefix}`), "");
       }
-      
-      // Proxy the request 
+
+      // Proxy the request
       return proxyService.proxyRequest(serviceName, request, proxyPath);
     };
-    
+
     // Add routes for all HTTP methods
-    const methods = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'];
+    const methods = ["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"];
+
     methods.forEach(method => {
       this.add(method, path, proxyHandler);
     });
-    
+
     return this;
   }
-  
+
   /**
    * Add a versioned route with validated parameters
    *
@@ -211,21 +219,23 @@ export class Router {
    */
   addVersionedValidated(method, path, paramType, paramName, ...handlers) {
     if (!this.config) {
-      throw new Error('Config instance required for versioned validated routes');
+      throw new Error("Config instance required for versioned validated routes");
     }
-    
+
     const versionInfo = this.config.getVersionInfo();
+
     if (!versionInfo.enabled) {
       // If versioning is disabled, just add a validated route
       return this.addValidated(method, path, paramType, paramName, ...handlers);
     }
-    
+
     // Add validated route for each version
     for (const version of versionInfo.supported) {
       const versionedPath = `/v${version}${path}`;
+
       this.addValidated(method, versionedPath, paramType, paramName, ...handlers);
     }
-    
+
     return this;
   }
 
@@ -241,7 +251,7 @@ export class Router {
     // 1. Exact path match (highest priority)
     // 2. Parameter path match (medium priority)
     // 3. Regex path match (lowest priority)
-    
+
     // Start with exact path matches
     for (const route of this.routes) {
       if (route.method !== method) continue;
@@ -249,7 +259,7 @@ export class Router {
         return { ...route, params: {} };
       }
     }
-    
+
     // Then check parameter paths
     for (const route of this.routes) {
       if (route.method !== method) continue;
@@ -266,6 +276,7 @@ export class Router {
           if (routeParts[i].startsWith(":")) {
             // Extract parameter
             const paramName = routeParts[i].substring(1);
+
             params[paramName] = pathParts[i];
           } else if (routeParts[i] !== pathParts[i]) {
             match = false;
@@ -278,17 +289,18 @@ export class Router {
         }
       }
     }
-    
+
     // Finally check regex paths
     for (const route of this.routes) {
       if (route.method !== method) continue;
       if (route.isRegex) {
         const match = path.match(route.path);
+
         if (match) {
           const params = {};
-          
+
           // If named capture groups exist, use them as params
-          if (route.path.toString().includes('?<')) {
+          if (route.path.toString().includes("?<")) {
             for (const [key, value] of Object.entries(match.groups || {})) {
               params[key] = value;
             }
@@ -298,7 +310,7 @@ export class Router {
               params[i - 1] = match[i];
             }
           }
-          
+
           return { ...route, params };
         }
       }
@@ -319,9 +331,9 @@ export class Router {
     if (pattern instanceof RegExp) {
       return pattern.test(path);
     }
-    
+
     // Handle string patterns with path parameters
-    if (typeof pattern === 'string' && !pattern.includes(":")) return false;
+    if (typeof pattern === "string" && !pattern.includes(":")) return false;
 
     const patternParts = pattern.split("/");
     const pathParts = path.split("/");
@@ -357,6 +369,7 @@ export class Router {
     try {
       // Apply global middleware first
       let currentRequest = request;
+
       for (const middleware of this.globalMiddleware) {
         currentRequest = await middleware(currentRequest, context);
       }
@@ -371,6 +384,7 @@ export class Router {
             if (r.isRegex) {
               return this.pathMatchesWithParams(r.path, path);
             }
+
             return r.path === path || this.pathMatchesWithParams(r.path, path);
           })
           .map((r) => r.method);
@@ -408,7 +422,7 @@ export class Router {
       {
         status: 404,
         headers: { "Content-Type": "application/json" },
-      },
+      }
     );
   }
 
@@ -427,7 +441,7 @@ export class Router {
           "Content-Type": "application/json",
           "Allow": allowedMethods.join(", "),
         },
-      },
+      }
     );
   }
 
@@ -446,7 +460,7 @@ export class Router {
         error,
         path: new URL(request.url).pathname,
         method: request.method,
-        requestId: context.services.logger.getRequestId(request)
+        requestId: context.services.logger.getRequestId(request),
       });
     } else {
       console.error("Router error:", error);
@@ -465,7 +479,7 @@ export class Router {
       {
         status: 500,
         headers: { "Content-Type": "application/json" },
-      },
+      }
     );
   }
 }

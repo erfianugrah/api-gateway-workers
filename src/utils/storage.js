@@ -3,12 +3,12 @@
  * @type {Object}
  */
 export const STORAGE_PREFIXES = {
-  KEY: 'key:',
-  KEY_INDEX: 'keyindex:',
-  LOOKUP: 'lookup:',
-  HMAC: 'hmac:',
-  RATE: 'rate:',
-  ROTATION: 'rotation:'
+  KEY: "key:",
+  KEY_INDEX: "keyindex:",
+  LOOKUP: "lookup:",
+  HMAC: "hmac:",
+  RATE: "rate:",
+  ROTATION: "rotation:",
 };
 
 /**
@@ -47,7 +47,8 @@ export function getHmacStorageId(key) {
  */
 export function getKeyIndexEntry(id, timestamp) {
   // Pad timestamp to ensure proper string sorting (20 digits for the year 9999)
-  const paddedTimestamp = timestamp.toString().padStart(20, '0');
+  const paddedTimestamp = timestamp.toString().padStart(20, "0");
+
   return `${STORAGE_PREFIXES.KEY_INDEX}${paddedTimestamp}_${id}`;
 }
 
@@ -60,12 +61,13 @@ export function getKeyIdFromIndexEntry(indexEntry) {
   if (!indexEntry.startsWith(STORAGE_PREFIXES.KEY_INDEX)) {
     return null;
   }
-  
-  const parts = indexEntry.substring(STORAGE_PREFIXES.KEY_INDEX.length).split('_');
+
+  const parts = indexEntry.substring(STORAGE_PREFIXES.KEY_INDEX.length).split("_");
+
   if (parts.length !== 2) {
     return null;
   }
-  
+
   return parts[1];
 }
 
@@ -78,12 +80,13 @@ export function getTimestampFromIndexEntry(indexEntry) {
   if (!indexEntry.startsWith(STORAGE_PREFIXES.KEY_INDEX)) {
     return null;
   }
-  
-  const parts = indexEntry.substring(STORAGE_PREFIXES.KEY_INDEX.length).split('_');
+
+  const parts = indexEntry.substring(STORAGE_PREFIXES.KEY_INDEX.length).split("_");
+
   if (parts.length !== 2) {
     return null;
   }
-  
+
   return parseInt(parts[0], 10);
 }
 
@@ -114,6 +117,7 @@ export function getRotationStorageId(keyId) {
  */
 export function encodeCursor(lastId, timestamp) {
   const cursorData = JSON.stringify({ id: lastId, ts: timestamp });
+
   return btoa(cursorData);
 }
 
@@ -125,9 +129,11 @@ export function encodeCursor(lastId, timestamp) {
 export function decodeCursor(cursor) {
   try {
     const cursorData = atob(cursor);
+
     return JSON.parse(cursorData);
   } catch (error) {
-    console.error('Invalid cursor format:', error);
+    console.error("Invalid cursor format:", error);
+
     return null;
   }
 }

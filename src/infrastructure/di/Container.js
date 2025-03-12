@@ -20,6 +20,7 @@ export class Container {
    */
   register(name, factory, singleton = true) {
     this.services.set(name, { factory, singleton });
+
     return this;
   }
 

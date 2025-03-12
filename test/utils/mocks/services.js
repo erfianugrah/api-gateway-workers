@@ -1,8 +1,8 @@
 /**
  * Mock service implementations for testing
  */
-import { createTestKey, createTestAdmin } from '../factories.js';
-import { jest } from '@jest/globals';
+import { createTestKey, createTestAdmin } from "../factories.js";
+import { jest } from "@jest/globals";
 
 /**
  * Create a mock key service
@@ -109,7 +109,7 @@ export function createMockCommandBus() {
 /**
  * Create a mock config service
  *
- * @param {Object} configValues - Config values to use 
+ * @param {Object} configValues - Config values to use
  * @returns {Object} Mock config service
  */
 export function createMockConfig(configValues = {}) {
@@ -139,11 +139,13 @@ export function createMockConfig(configValues = {}) {
  */
 export function createMockAuditLogger() {
   const logs = [];
-  
+
   return {
     logAdminAction: jest.fn().mockImplementation((adminId, action, details, env, request) => {
       const logEntry = { adminId, action, details, timestamp: Date.now() };
+
       logs.push(logEntry);
+
       return Promise.resolve("test-log-id");
     }),
     getLogs: jest.fn().mockReturnValue(logs),

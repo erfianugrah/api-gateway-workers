@@ -50,6 +50,7 @@ export class ApiKeyAdapter {
       if (!keyData) {
         // Clean up the stale lookup entry
         await this.storage.delete(`lookup:${apiKey}`);
+
         return {
           valid: false,
           error: "Key data not found",
@@ -90,7 +91,7 @@ export class ApiKeyAdapter {
         );
 
         const hasRequiredScopes = normalizedRequiredScopes.every(
-          (scope) => normalizedKeyScopes.includes(scope),
+          (scope) => normalizedKeyScopes.includes(scope)
         );
 
         if (!hasRequiredScopes) {

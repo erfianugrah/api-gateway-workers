@@ -11,6 +11,7 @@ const cryptoMock = {
     for (let i = 0; i < array.length; i++) {
       array[i] = (i * 11) % 256; // Deterministic but appears random enough
     }
+
     return array;
   },
 
@@ -36,7 +37,7 @@ const cryptoMock = {
       keyMaterial,
       derivedKeyAlgorithm,
       extractable,
-      keyUsages,
+      keyUsages
     ) {
       return Promise.resolve({
         type: "mock-derived-key",
@@ -53,8 +54,10 @@ const cryptoMock = {
     encrypt: function (algorithm, key, data) {
       // Mock an encrypted array with a specific pattern
       const encrypted = new Uint8Array(data.length + 16); // Add some space for IV
+
       encrypted.set(new Uint8Array(data.length).fill(255), 0); // Fill with 255
       encrypted.set(new TextEncoder().encode("MOCK_ENCRYPTED"), 4); // Add marker
+
       return Promise.resolve(encrypted.buffer);
     },
 
@@ -67,6 +70,7 @@ const cryptoMock = {
     sign: function (algorithm, key, data) {
       // Generate mock signature
       const signature = new Uint8Array(32).fill(128); // Fixed signature for testing
+
       return Promise.resolve(signature.buffer);
     },
 

@@ -20,19 +20,20 @@ export function createErrorHandler(logger) {
       path: new URL(request.url).pathname,
       method: request.method,
       error: error,
-      requestId: logger.getRequestId(request)
+      requestId: logger.getRequestId(request),
     };
-    
+
     // Log differently based on error type
     if (error instanceof ApiError) {
       // For ApiErrors use appropriate log level based on status code
-      const logLevel = error.statusCode >= 500 ? 'error' : 'warn';
+      const logLevel = error.statusCode >= 500 ? "error" : "warn";
+
       logger[logLevel](`API Error: ${error.message}`, {
         ...context,
-        operation: error.code || 'API_ERROR',
-        statusCode: error.statusCode
+        operation: error.code || "API_ERROR",
+        statusCode: error.statusCode,
       });
-      
+
       return new Response(
         JSON.stringify(error.toResponse()),
         {
@@ -44,16 +45,16 @@ export function createErrorHandler(logger) {
             "Access-Control-Allow-Headers":
               "Content-Type, Authorization, X-API-Key",
           },
-        },
+        }
       );
     }
 
     // For unexpected errors, log at error level and return a generic 500 response
     logger.error(`Unexpected error: ${error.message}`, {
       ...context,
-      operation: 'INTERNAL_ERROR'
+      operation: "INTERNAL_ERROR",
     });
-    
+
     const genericError = {
       error: "An unexpected error occurred",
       code: "INTERNAL_ERROR",
@@ -71,7 +72,7 @@ export function createErrorHandler(logger) {
           "Access-Control-Allow-Headers":
             "Content-Type, Authorization, X-API-Key",
         },
-      },
+      }
     );
   };
 }

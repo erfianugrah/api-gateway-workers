@@ -25,7 +25,7 @@ export class ListKeysCommand extends Command {
    */
   validate() {
     const validation = validatePaginationParams(this.limit, this.offset);
-    
+
     return {
       isValid: validation.isValid,
       errors: validation.errors || {},

@@ -53,7 +53,7 @@ export class SystemController extends BaseController {
     // Check permissions
     this.services.authService.requirePermission(
       adminInfo,
-      "admin:system:maintenance",
+      "admin:system:maintenance"
     );
 
     // Create command
@@ -82,7 +82,7 @@ export class SystemController extends BaseController {
     // Check permissions
     this.services.authService.requirePermission(
       adminInfo,
-      "admin:system:logs",
+      "admin:system:logs"
     );
 
     // Parse query params
@@ -92,15 +92,16 @@ export class SystemController extends BaseController {
     const limit = parseInt(url.searchParams.get("limit") || "50");
     const cursor = url.searchParams.get("cursor") || "";
     const criticalOnly = url.searchParams.get("critical") === "true";
-    
+
     // Check for date filter in regex path parameter
     let date = null;
+
     if (context.params && context.params[0] && /^\d{4}-\d{2}-\d{2}$/.test(context.params[0])) {
       date = context.params[0];
     }
 
     let result;
-    
+
     if (date) {
       // Get logs for a specific date
       result = await this.services.auditLogger.getLogsByDate(date, {

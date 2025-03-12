@@ -1,16 +1,16 @@
 import { Container } from "../../src/infrastructure/di/Container.js";
 import { ForbiddenError } from "../../src/core/errors/ApiError.js";
-import { 
-  createMockStorage, 
-  createMockKeyRepository 
-} from './mocks/storage.js';
-import { 
-  createMockKeyService, 
-  createMockAuthService, 
+import {
+  createMockStorage,
+  createMockKeyRepository,
+} from "./mocks/storage.js";
+import {
+  createMockKeyService,
+  createMockAuthService,
   createMockCommandBus,
   createMockConfig,
-  createMockAuditLogger
-} from './mocks/services.js';
+  createMockAuditLogger,
+} from "./mocks/services.js";
 
 /**
  * Test container with pre-configured mocks
@@ -54,6 +54,7 @@ export class TestContainer extends Container {
       if (id === keyId) {
         return Promise.resolve(keyData);
       }
+
       return Promise.resolve(null);
     });
 
@@ -72,6 +73,7 @@ export class TestContainer extends Container {
       if (value === keyValue) {
         return Promise.resolve(keyId);
       }
+
       return Promise.resolve(null);
     });
 

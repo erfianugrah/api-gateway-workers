@@ -9,7 +9,7 @@ export class ApiKeyAdapter {
 
   /**
    * Validate an API key
-   * 
+   *
    * @param {string} apiKey - API key to validate
    * @param {string[]} requiredScopes - Required scopes
    * @returns {Promise<Object>} Validation result

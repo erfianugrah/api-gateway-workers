@@ -29,6 +29,7 @@ export class ValidationController extends BaseController {
    */
   async validateKey(request, context) {
     let body;
+
     try {
       body = await request.json();
     } catch (error) {
@@ -45,7 +46,7 @@ export class ValidationController extends BaseController {
 
     if (!apiKey) {
       throw new ValidationError(
-        "API key is required (provide in X-API-Key header or key field in request body)",
+        "API key is required (provide in X-API-Key header or key field in request body)"
       );
     }
 

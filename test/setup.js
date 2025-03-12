@@ -14,13 +14,15 @@ class MockDurableObjectState {
       }),
       list: jest.fn(async ({ prefix }) => {
         const results = new Map();
+
         for (const [key, value] of this.data.entries()) {
           if (key.startsWith(prefix)) {
             results.set(key, value);
           }
         }
+
         return results;
-      })
+      }),
     };
   }
 }
@@ -31,11 +33,12 @@ global.crypto = {
     for (let i = 0; i < buffer.length; i++) {
       buffer[i] = Math.floor(Math.random() * 256);
     }
+
     return buffer;
   },
   randomUUID: () => {
-    return 'test-uuid-' + Math.floor(Math.random() * 1000);
-  }
+    return "test-uuid-" + Math.floor(Math.random() * 1000);
+  },
 };
 
 // Mock for Cloudflare DurableObject

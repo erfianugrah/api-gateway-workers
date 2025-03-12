@@ -2,11 +2,11 @@ import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { KeysController } from "../../../src/api/controllers/KeysController.js";
 import { ListKeysCommand } from "../../../src/core/keys/commands/ListKeysCommand.js";
 import { CreateKeyCommand } from "../../../src/core/keys/commands/CreateKeyCommand.js";
-import { 
-  TestContainer, 
-  createTestAdmin, 
+import {
+  TestContainer,
+  createTestAdmin,
   createMockContext as createTestContext,
-  createMockRequest as createTestRequest
+  createMockRequest as createTestRequest,
 } from "../../utils/index.js";
 
 describe("KeysController", () => {
@@ -18,17 +18,17 @@ describe("KeysController", () => {
   beforeEach(() => {
     // Create test container
     container = new TestContainer();
-    
+
     // Create mock command bus
     mockCommandBus = {
-      execute: jest.fn()
+      execute: jest.fn(),
     };
-    
+
     // Create mock auth service with permission check
     mockAuthService = {
-      requirePermission: jest.fn()
+      requirePermission: jest.fn(),
     };
-    
+
     // Create the controller with mocks
     controller = new KeysController({
       authService: mockAuthService,
@@ -37,8 +37,8 @@ describe("KeysController", () => {
       services: {
         authService: mockAuthService,
         commandBus: mockCommandBus,
-        auditLogger: container.resolve("auditLogger")
-      }
+        auditLogger: container.resolve("auditLogger"),
+      },
     });
   });
 
@@ -54,7 +54,7 @@ describe("KeysController", () => {
         limit: 100,
         offset: 0,
       });
-      
+
       // Create test request and context
       const request = createTestRequest({
         admin: createTestAdmin(),
@@ -70,6 +70,7 @@ describe("KeysController", () => {
 
       // Parse the response body
       const body = await response.json();
+
       expect(body).toHaveLength(2);
       expect(body[0].id).toBe("key1");
       expect(body[1].id).toBe("key2");
@@ -84,12 +85,13 @@ describe("KeysController", () => {
         expect.any(ListKeysCommand),
         expect.anything()
       );
-      
+
       // Check command params
       const command = mockCommandBus.execute.mock.calls[0][0];
+
       expect(command.limit).toBe(100);
       expect(command.offset).toBe(0);
-      
+
       // Check that auth was checked
       expect(mockAuthService.requirePermission).toHaveBeenCalledWith(
         expect.anything(),
@@ -105,7 +107,7 @@ describe("KeysController", () => {
         limit: 10,
         offset: 20,
       });
-      
+
       // Create test request with pagination parameters
       const request = createTestRequest({
         url: "http://example.com/keys?limit=10&offset=20",
@@ -142,7 +144,7 @@ describe("KeysController", () => {
 
       // Call the controller - should handle the error
       const response = await controller.listKeys(request, context);
-      
+
       // Should return error response
       expect(response.status).not.toBe(200);
     });
@@ -158,7 +160,7 @@ describe("KeysController", () => {
         owner: "test@example.com",
         scopes: ["read:data"],
       });
-      
+
       // Create test request with key data
       const request = createTestRequest({
         method: "POST",
@@ -180,7 +182,7 @@ describe("KeysController", () => {
 
       // Parse the response body
       const body = await response.json();
-      
+
       // Check key properties
       expect(body.id).toBe("test-key-id");
       expect(body.key).toBe("km_test-key-0123456789");
@@ -191,13 +193,14 @@ describe("KeysController", () => {
         expect.any(CreateKeyCommand),
         expect.anything()
       );
-      
+
       // Check command data
       const command = mockCommandBus.execute.mock.calls[0][0];
+
       expect(command.name).toBe("New Key");
       expect(command.owner).toBe("test@example.com");
       expect(command.scopes).toEqual(["read:data"]);
-      
+
       // Check that auth was checked
       expect(mockAuthService.requirePermission).toHaveBeenCalledWith(
         expect.anything(),
@@ -226,7 +229,7 @@ describe("KeysController", () => {
 
       // Call the controller - should handle the error
       const response = await controller.createKey(request, context);
-      
+
       // Should return error response
       expect(response.status).not.toBe(201);
     });

@@ -34,6 +34,7 @@ describe("Security utilities", () => {
         for (let i = 0; i < buffer.length; i++) {
           buffer[i] = i % 256; // Deterministic pattern
         }
+
         return buffer;
       }),
       randomUUID: jest.fn(() => "test-uuid"),
@@ -42,7 +43,7 @@ describe("Security utilities", () => {
         deriveKey: jest.fn().mockResolvedValue("mock-derived-key"),
         encrypt: jest.fn().mockResolvedValue(new Uint8Array([1, 2, 3])),
         decrypt: jest.fn().mockResolvedValue(
-          new TextEncoder().encode("decrypted-data"),
+          new TextEncoder().encode("decrypted-data")
         ),
         sign: jest.fn().mockResolvedValue(new Uint8Array([4, 5, 6])),
       },
@@ -71,11 +72,13 @@ describe("Security utilities", () => {
       // The full result should be predictable based on our mock
       const expectedSuffix =
         "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f";
+
       expect(key).toBe(`km_${expectedSuffix}`);
     });
 
     it("should use a custom prefix if provided", () => {
       const key = generateApiKey("custom_");
+
       expect(key.startsWith("custom_")).toBe(true);
     });
   });
@@ -114,7 +117,7 @@ describe("Security utilities", () => {
         expect.any(Uint8Array),
         { name: "PBKDF2" },
         false,
-        ["deriveKey"],
+        ["deriveKey"]
       );
 
       expect(crypto.subtle.deriveKey).toHaveBeenCalledWith(
@@ -127,7 +130,7 @@ describe("Security utilities", () => {
         "mock-key",
         { name: "AES-GCM", length: 256 },
         false,
-        ["encrypt"],
+        ["encrypt"]
       );
 
       expect(crypto.subtle.encrypt).toHaveBeenCalledWith(
@@ -137,7 +140,7 @@ describe("Security utilities", () => {
           tagLength: 128,
         },
         "mock-derived-key",
-        expect.any(Uint8Array),
+        expect.any(Uint8Array)
       );
     });
   });
@@ -148,6 +151,7 @@ describe("Security utilities", () => {
 
     it("should generate a deterministic HMAC in test mode", async () => {
       const hmac = await generateHmac(keyId, testSecret, true);
+
       expect(hmac).toBe("test-hmac-test-key-id");
     });
 
@@ -169,13 +173,13 @@ describe("Security utilities", () => {
         expect.any(Uint8Array),
         { name: "HMAC", hash: "SHA-384" },
         false,
-        ["sign"],
+        ["sign"]
       );
 
       expect(crypto.subtle.sign).toHaveBeenCalledWith(
         "HMAC",
         "mock-key",
-        expect.any(Uint8Array),
+        expect.any(Uint8Array)
       );
     });
   });
@@ -206,6 +210,7 @@ describe("Security utilities", () => {
 
       // First request (1/5)
       let result = await checkRateLimit(mockStorage, key, limit, windowMs);
+
       expect(result.limited).toBe(false);
       expect(result.remaining).toBe(5);
 
@@ -224,6 +229,7 @@ describe("Security utilities", () => {
           get: function (header) {
             if (header === "CF-Connecting-IP") return "2001:db8::1";
             if (header === "X-Forwarded-For") return "192.168.1.1, 10.0.0.1";
+
             return null;
           },
         },

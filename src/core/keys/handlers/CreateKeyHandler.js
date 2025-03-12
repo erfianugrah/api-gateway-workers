@@ -59,7 +59,7 @@ export class CreateKeyHandler extends CommandHandler {
           expiresAt: command.expiresAt || 0,
         },
         context.env,
-        context.request,
+        context.request
       );
     }
 

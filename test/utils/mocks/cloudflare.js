@@ -1,7 +1,7 @@
 /**
  * Mock Cloudflare Workers-specific objects for testing
  */
-import { createMockDurableObjectState } from './storage.js';
+import { createMockDurableObjectState } from "./storage.js";
 
 /**
  * Create a mock Cloudflare Workers environment
@@ -32,7 +32,7 @@ export function createMockEnv(options = {}) {
         }),
       }),
     },
-    
+
     // KV binding
     KV: {
       get: jest.fn().mockImplementation(async (key) => {
@@ -40,20 +40,22 @@ export function createMockEnv(options = {}) {
       }),
       put: jest.fn().mockImplementation(async (key, value) => {
         kvValues[key] = value;
+
         return undefined;
       }),
       delete: jest.fn().mockImplementation(async (key) => {
         delete kvValues[key];
+
         return undefined;
       }),
       list: jest.fn().mockResolvedValue({ keys: [], list_complete: true }),
     },
-    
+
     // Secret bindings
     SECRET_KEY: secretValues.SECRET_KEY || "test-secret-key",
     HMAC_SECRET: secretValues.HMAC_SECRET || "test-hmac-secret",
     JWT_SECRET: secretValues.JWT_SECRET || "test-jwt-secret",
-    
+
     // Other settings
     VERSION: "1.0.0-test",
     ENVIRONMENT: "test",
@@ -69,7 +71,7 @@ export function createMockEnv(options = {}) {
 export function createMockDurableObject(handler) {
   const state = createMockDurableObjectState();
   const env = createMockEnv();
-  
+
   return {
     state,
     env,

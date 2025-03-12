@@ -164,8 +164,9 @@ describe("Role-based permissions", () => {
             const baseScope = scope.substring(0, scope.length - 1);
             // At least one permission should start with the base scope
             const matchingPermissions = Object.keys(PERMISSION_SCOPES).some(
-              (p) => p.startsWith(baseScope),
+              (p) => p.startsWith(baseScope)
             );
+
             expect(matchingPermissions).toBe(true);
           } else {
             // Direct permission should be defined

@@ -27,7 +27,7 @@ export class ListKeysWithCursorCommand extends Command {
    */
   validate() {
     const validation = validateCursorParams(this.limit, this.cursor);
-    
+
     return {
       isValid: validation.isValid,
       errors: validation.errors || {},

@@ -22,25 +22,26 @@ export class BaseController {
       try {
         // Get our error handler from the context
         const errorHandler = context.services?.errorHandler;
-        
+
         // Log entry to the endpoint
         if (context.services?.logger) {
           context.services.logger.debug(`Request: ${request.method} ${new URL(request.url).pathname}`, {
             requestId: context.services.logger.getRequestId(request),
-            operation: `${this.constructor.name}.${handlerFn.name}`
+            operation: `${this.constructor.name}.${handlerFn.name}`,
           });
         }
-        
+
         return await handlerFn.call(this, request, context);
       } catch (error) {
         // Use our error handler from the context, or a fallback if not available
         if (context.services?.errorHandler) {
           return context.services.errorHandler(error, request);
         } else {
-          console.error('Error processing request (fallback handler):', error);
+          console.error("Error processing request (fallback handler):", error);
+
           return new Response(JSON.stringify({
             error: "An error occurred",
-            code: "INTERNAL_ERROR"
+            code: "INTERNAL_ERROR",
           }), { status: 500, headers: { "Content-Type": "application/json" } });
         }
       }

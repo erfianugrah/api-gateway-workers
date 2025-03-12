@@ -6,6 +6,7 @@
  */
 export function generateApiKey(prefix = "km_") {
   const keyBuffer = new Uint8Array(32);
+
   crypto.getRandomValues(keyBuffer);
 
   const randomPart = [...keyBuffer]
@@ -53,7 +54,7 @@ export async function encryptData(data, secret, isTest = false) {
     encoder.encode(secret),
     { name: "PBKDF2" },
     false,
-    ["deriveKey"],
+    ["deriveKey"]
   );
 
   // Derive a suitable encryption key using PBKDF2
@@ -68,7 +69,7 @@ export async function encryptData(data, secret, isTest = false) {
     keyMaterial,
     { name: "AES-GCM", length: 256 },
     false,
-    ["encrypt"],
+    ["encrypt"]
   );
 
   // Encrypt the data
@@ -80,7 +81,7 @@ export async function encryptData(data, secret, isTest = false) {
       tagLength: 128,
     },
     key,
-    dataBuffer,
+    dataBuffer
   );
 
   // Convert the encrypted data, IV, and salt to strings for storage
@@ -108,7 +109,7 @@ export async function encryptData(data, secret, isTest = false) {
 export async function decryptData(encryptedObj, secret, isTest = false) {
   if (!encryptedObj || !secret) {
     throw new Error(
-      "Encrypted data and secret key are required for decryption",
+      "Encrypted data and secret key are required for decryption"
     );
   }
 
@@ -117,6 +118,7 @@ export async function decryptData(encryptedObj, secret, isTest = false) {
   // Test mode handling
   if (isTest || encryptedData.startsWith("test-encrypted-")) {
     const originalData = encryptedData.replace("test-encrypted-", "");
+
     return originalData;
   }
 
@@ -135,7 +137,7 @@ export async function decryptData(encryptedObj, secret, isTest = false) {
       encoder.encode(secret),
       { name: "PBKDF2" },
       false,
-      ["deriveKey"],
+      ["deriveKey"]
     );
 
     const key = await crypto.subtle.deriveKey(
@@ -148,7 +150,7 @@ export async function decryptData(encryptedObj, secret, isTest = false) {
       keyMaterial,
       { name: "AES-GCM", length: 256 },
       false,
-      ["decrypt"],
+      ["decrypt"]
     );
 
     // Decrypt the data
@@ -158,11 +160,12 @@ export async function decryptData(encryptedObj, secret, isTest = false) {
         iv: ivBuffer,
       },
       key,
-      encryptedBuffer,
+      encryptedBuffer
     );
 
     // Convert back to string
     const decoder = new TextDecoder();
+
     return decoder.decode(decryptedBuffer);
   } else if (version === 2) {
     // New v2 format with stored salt and iterations
@@ -174,7 +177,7 @@ export async function decryptData(encryptedObj, secret, isTest = false) {
       encoder.encode(secret),
       { name: "PBKDF2" },
       false,
-      ["deriveKey"],
+      ["deriveKey"]
     );
 
     const key = await crypto.subtle.deriveKey(
@@ -187,7 +190,7 @@ export async function decryptData(encryptedObj, secret, isTest = false) {
       keyMaterial,
       { name: "AES-GCM", length: 256 },
       false,
-      ["decrypt"],
+      ["decrypt"]
     );
 
     // Decrypt the data
@@ -198,11 +201,12 @@ export async function decryptData(encryptedObj, secret, isTest = false) {
         tagLength: 128,
       },
       key,
-      encryptedBuffer,
+      encryptedBuffer
     );
 
     // Convert back to string
     const decoder = new TextDecoder();
+
     return decoder.decode(decryptedBuffer);
   } else {
     throw new Error(`Unsupported encryption version: ${version}`);
@@ -237,14 +241,14 @@ export async function generateHmac(keyId, secret, isTest = false) {
     keyData,
     { name: "HMAC", hash: "SHA-384" }, // Using SHA-384 for stronger HMAC
     false,
-    ["sign"],
+    ["sign"]
   );
 
   // Sign the message
   const signature = await crypto.subtle.sign(
     "HMAC",
     key,
-    message,
+    message
   );
 
   // Convert the signature to a hex string
@@ -272,9 +276,11 @@ export async function verifyHmac(keyId, hmacSignature, secret, isTest = false) {
 
   try {
     const calculatedHmac = await generateHmac(keyId, secret, false);
+
     return hmacSignature === calculatedHmac;
   } catch (error) {
     console.error("HMAC verification error:", error);
+
     return false;
   }
 }
@@ -314,15 +320,16 @@ export async function rotateEncryptionMaterial(storage, oldSecret, newSecret) {
       } catch (error) {
         console.error(
           `Failed to rotate encryption for ${keyStorageId}:`,
-          error,
+          error
         );
       }
     }
   }
 
   console.log(
-    `Completed encryption material rotation. Rotated ${rotatedCount} keys.`,
+    `Completed encryption material rotation. Rotated ${rotatedCount} keys.`
   );
+
   return rotatedCount;
 }
 
@@ -364,8 +371,9 @@ export async function rotateHmacMaterial(storage, oldSecret, newSecret) {
   }
 
   console.log(
-    `Completed HMAC material rotation. Rotated ${rotatedCount} HMACs.`,
+    `Completed HMAC material rotation. Rotated ${rotatedCount} HMACs.`
   );
+
   return rotatedCount;
 }
 
@@ -382,7 +390,7 @@ export async function checkRateLimit(
   storage,
   rateLimitKey,
   limit = 100,
-  windowMs = 60000,
+  windowMs = 60000
 ) {
   // Get current rate limit data or create new
   const rateLimitData = await storage.get(rateLimitKey) || {
@@ -433,9 +441,11 @@ export async function checkRateLimit(
 export function getClientIp(request) {
   // Prioritize Cloudflare headers
   const cfIp = request.headers.get("CF-Connecting-IP");
+
   if (cfIp && cfIp.trim()) {
     // Sanitize the IP address
     const sanitizedIp = cfIp.trim().replace(/[^a-zA-Z0-9.:]/g, "");
+
     // Verify it's a valid IP format (basic check)
     if (sanitizedIp.match(/^[0-9a-fA-F.:]{3,45}$/)) {
       return sanitizedIp;
@@ -444,11 +454,13 @@ export function getClientIp(request) {
 
   // Fall back to X-Forwarded-For
   const forwardedIp = request.headers.get("X-Forwarded-For");
+
   if (forwardedIp && forwardedIp.trim()) {
     // Get first IP in the chain (client IP)
     const firstIp = forwardedIp.split(",")[0].trim();
     // Sanitize the IP address
     const sanitizedIp = firstIp.replace(/[^a-zA-Z0-9.:]/g, "");
+
     // Verify it's a valid IP format (basic check)
     if (sanitizedIp.match(/^[0-9a-fA-F.:]{3,45}$/)) {
       return sanitizedIp;
@@ -469,6 +481,7 @@ export function getRateLimitStorageId(clientIp, endpoint) {
   // Generate a rate limit key based on IP and endpoint
   // Use basic path normalization to ensure consistent rate limiting
   const normalizedEndpoint = endpoint.split("/").slice(0, 3).join("/");
+
   return `ratelimit:${clientIp}:${normalizedEndpoint}`;
 }
 
@@ -492,6 +505,8 @@ function bufferToHex(buffer) {
  */
 function hexToBuffer(hex) {
   const matches = hex.match(/.{1,2}/g);
+
   if (!matches) return new Uint8Array(0);
+
   return new Uint8Array(matches.map((byte) => parseInt(byte, 16)));
 }

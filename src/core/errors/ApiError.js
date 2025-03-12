@@ -133,7 +133,7 @@ export class RateLimitError extends ApiError {
     super(
       "Rate limit exceeded. Please try again later.",
       429,
-      "RATE_LIMIT_EXCEEDED",
+      "RATE_LIMIT_EXCEEDED"
     );
     this.retryAfter = retryAfter;
   }

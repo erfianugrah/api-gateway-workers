@@ -11,6 +11,7 @@
 export async function generateSecureApiKey() {
   // Create a buffer with 32 random bytes (256 bits of entropy)
   const buffer = new Uint8Array(32);
+
   crypto.getRandomValues(buffer);
 
   // Convert to hex string
@@ -68,6 +69,7 @@ export async function createApiKey(keyData, env) {
 
   // Store key data (without the actual key value)
   const storedKey = { ...newKey };
+
   delete storedKey.key; // Never store the actual key in the data
 
   // Store key data and lookup in a transaction
@@ -75,6 +77,7 @@ export async function createApiKey(keyData, env) {
     // Use transaction if available
     if (typeof env.KV.transaction === "function") {
       const tx = env.KV.transaction();
+
       tx.put(`key:${keyId}`, JSON.stringify(storedKey));
       tx.put(`lookup:${apiKey}`, keyId);
 

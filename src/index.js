@@ -29,20 +29,20 @@ export default {
     const config = setupConfig(env);
     const logger = new Logger(config);
     const errorHandler = createErrorHandler(logger);
-    
+
     try {
       // Check required bindings
       if (!env.KEY_MANAGER) {
         return errorHandler(
           new Error("Service misconfigured: KEY_MANAGER binding not found"),
-          request,
+          request
         );
       }
 
       if (!env.KV) {
         return errorHandler(
           new Error("Service misconfigured: KV binding not found"),
-          request,
+          request
         );
       }
 
@@ -58,7 +58,7 @@ export default {
           headers: {
             "Cache-Control": "no-store",
           },
-          config: config
+          config: config,
         });
       }
 
@@ -80,6 +80,7 @@ export default {
         // Forward to the Durable Object
         const id = env.KEY_MANAGER.idFromName("global");
         const keyManager = env.KEY_MANAGER.get(id);
+
         return await keyManager.fetch(request.clone());
       }
 
@@ -98,6 +99,7 @@ export default {
       return errorHandler(new Error("Not Found"), request);
     } catch (error) {
       logger.error("Unhandled worker error", { error, path: new URL(request.url).pathname });
+
       return errorHandler(error, request);
     }
   },
@@ -115,7 +117,7 @@ async function handleSetup(request, env, config) {
   // Create logger and error handler for this function
   const logger = new Logger(config);
   const errorHandler = createErrorHandler(logger);
-  
+
   try {
     // Check if setup has already been completed
     const setupCompleted = await env.KV.get("system:setup_completed");
@@ -123,18 +125,19 @@ async function handleSetup(request, env, config) {
     if (setupCompleted === "true") {
       return errorHandler(
         new ForbiddenError("Setup has already been completed"),
-        request,
+        request
       );
     }
 
     // Parse admin data from request
     let adminData;
+
     try {
       adminData = await request.json();
     } catch (error) {
       return errorHandler(
         new Error("Invalid JSON in request body"),
-        request,
+        request
       );
     }
 
@@ -142,7 +145,7 @@ async function handleSetup(request, env, config) {
     if (!adminData.name || !adminData.email) {
       return errorHandler(
         new Error("Name and email are required"),
-        request,
+        request
       );
     }
 
@@ -171,7 +174,7 @@ async function handleSetup(request, env, config) {
         adminEmail: adminData.email,
       },
       env,
-      request,
+      request
     );
 
     // Return success
@@ -187,6 +190,7 @@ async function handleSetup(request, env, config) {
     }, { status: 201 });
   } catch (error) {
     logger.error("Setup error", { error });
+
     return errorHandler(error, request);
   }
 }
@@ -203,17 +207,17 @@ async function handleAdminRequest(request, env, config) {
   // Create logger and error handler for this function
   const logger = new Logger(config);
   const errorHandler = createErrorHandler(logger);
-  
+
   try {
     // Extract API key from header using configurable header name
-    const apiKeyHeader = config.get('security.apiKeyHeader', 'X-Api-Key');
+    const apiKeyHeader = config.get("security.apiKeyHeader", "X-Api-Key");
     const apiKey = request.headers.get(apiKeyHeader);
 
     // No API key provided
     if (!apiKey) {
       return errorHandler(
         new UnauthorizedError("Authentication required"),
-        request,
+        request
       );
     }
 
@@ -230,20 +234,21 @@ async function handleAdminRequest(request, env, config) {
     if (!auth.authenticated) {
       return errorHandler(
         new UnauthorizedError(auth.error || "Authentication failed"),
-        request,
+        request
       );
     }
 
     // Add admin info to the request
     const adminRequest = new Request(request);
+
     adminRequest.headers.set("X-Admin-ID", auth.admin.keyId);
     adminRequest.headers.set(
       "X-Admin-Email",
-      auth.admin.email || "unknown",
+      auth.admin.email || "unknown"
     );
     adminRequest.headers.set(
       "X-Admin-Role",
-      auth.admin.role || "unknown",
+      auth.admin.role || "unknown"
     );
 
     // Forward to the Durable Object with a consistent ID
@@ -259,7 +264,9 @@ async function handleAdminRequest(request, env, config) {
       const response = await keyManager.fetch(adminRequest, {
         signal: controller.signal,
       });
+
       clearTimeout(timeoutId);
+
       return response;
     } catch (error) {
       clearTimeout(timeoutId);
@@ -267,15 +274,17 @@ async function handleAdminRequest(request, env, config) {
       if (error.name === "AbortError") {
         return errorHandler(
           new Error("Request timed out"),
-          request,
+          request
         );
       }
 
       logger.error("Error forwarding request", { error, path: new URL(request.url).pathname });
+
       return errorHandler(error, request);
     }
   } catch (error) {
     logger.error("Authentication error", { error, path: new URL(request.url).pathname });
+
     return errorHandler(error, request);
   }
 }

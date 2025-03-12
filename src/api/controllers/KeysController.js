@@ -50,27 +50,29 @@ export class KeysController extends BaseController {
     const url = new URL(request.url);
     const limit = parseInt(url.searchParams.get("limit") || "100");
     const offset = parseInt(url.searchParams.get("offset") || "0");
-    
+
     // Extract API version if present in path
     let apiVersion = null;
+
     if (context.params && context.params[0] && /^\d+$/.test(context.params[0])) {
       apiVersion = parseInt(context.params[0]);
     }
-    
+
     // Extract status filter if present
     let statusFilter = null;
-    if (context.params && context.params[0] && ['active', 'revoked', 'expired'].includes(context.params[0])) {
+
+    if (context.params && context.params[0] && ["active", "revoked", "expired"].includes(context.params[0])) {
       statusFilter = context.params[0];
     }
-    
+
     // Create command with filters
-    const command = new ListKeysCommand({ 
-      limit, 
+    const command = new ListKeysCommand({
+      limit,
       offset,
       apiVersion,
-      status: statusFilter
+      status: statusFilter,
     });
-    
+
     // Execute the command
     const result = await this.services.commandBus.execute(command, {
       adminId: adminInfo.keyId,
@@ -84,12 +86,13 @@ export class KeysController extends BaseController {
       "X-Pagination-Limit": result.limit.toString(),
       "X-Pagination-Offset": result.offset.toString(),
     };
-    
+
     // Add API version header if applicable
     if (apiVersion) {
-      const versionHeader = this.services.config ? 
-        this.services.config.get('routing.versioning.versionHeader', 'X-API-Version') : 
-        'X-API-Version';
+      const versionHeader = this.services.config ?
+        this.services.config.get("routing.versioning.versionHeader", "X-API-Version") :
+        "X-API-Version";
+
       headers[versionHeader] = apiVersion.toString();
     }
 
@@ -110,6 +113,7 @@ export class KeysController extends BaseController {
     this.services.authService.requirePermission(adminInfo, "admin:keys:create");
 
     let data;
+
     try {
       data = await request.json();
     } catch (error) {
@@ -150,10 +154,10 @@ export class KeysController extends BaseController {
     this.services.authService.requirePermission(adminInfo, "admin:keys:read");
 
     const keyId = context.params.id;
-    
+
     // Create command
     const command = new GetKeyCommand({ keyId });
-    
+
     // Execute the command
     const result = await this.services.commandBus.execute(command, {
       adminId: adminInfo.keyId,
@@ -181,8 +185,10 @@ export class KeysController extends BaseController {
 
     // Extract revocation reason if provided
     let reason = "Administrative action";
+
     try {
       const body = await request.json();
+
       if (body && body.reason) {
         reason = body.reason;
       }
@@ -222,6 +228,7 @@ export class KeysController extends BaseController {
     const keyId = context.params.id;
 
     let body = {};
+
     try {
       body = await request.json();
     } catch (error) {

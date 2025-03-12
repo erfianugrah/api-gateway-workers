@@ -40,7 +40,7 @@ export class RevokeKeyHandler extends CommandHandler {
     const result = await this.keyService.revokeKey(
       command.keyId,
       command.reason || "Administrative action",
-      command.revokedBy,
+      command.revokedBy
     );
 
     // If revocation failed, handle the error
@@ -48,6 +48,7 @@ export class RevokeKeyHandler extends CommandHandler {
       if (result.error.includes("not found")) {
         throw new NotFoundError("API key", command.keyId);
       }
+
       throw new Error(result.error);
     }
 
@@ -61,7 +62,7 @@ export class RevokeKeyHandler extends CommandHandler {
           reason: command.reason || "Administrative action",
         },
         context.env,
-        context.request,
+        context.request
       );
     }
 

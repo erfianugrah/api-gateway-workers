@@ -125,7 +125,7 @@ export class AuthService {
     if (!this.hasPermission(admin, requiredPermission)) {
       throw new ForbiddenError(
         `You do not have permission: ${requiredPermission}`,
-        requiredPermission,
+        requiredPermission
       );
     }
   }
@@ -138,6 +138,7 @@ export class AuthService {
    */
   extractAdminInfo(request) {
     const adminId = request.headers.get("X-Admin-ID");
+
     if (!adminId) {
       return null;
     }

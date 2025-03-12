@@ -31,6 +31,7 @@ export class KeyServiceAdapter extends KeyService {
           general: error.message,
         });
       }
+
       throw error;
     }
   }
@@ -43,6 +44,7 @@ export class KeyServiceAdapter extends KeyService {
    */
   async getKey(keyId) {
     const key = await this.apiKeyManager.getKey(keyId);
+
     return key;
   }
 

@@ -29,7 +29,7 @@ describe("Key Validator", () => {
         status: "active",
         createdAt: Date.now(),
         lastUsedAt: 0,
-      }),
+      })
     );
 
     mockEnv.KV.data.set("lookup:km_expired_key", "expired-key-id");
@@ -45,7 +45,7 @@ describe("Key Validator", () => {
         createdAt: Date.now() - 86400000, // 1 day ago
         expiresAt: Date.now() - 3600000, // 1 hour ago
         lastUsedAt: 0,
-      }),
+      })
     );
 
     mockEnv.KV.data.set("lookup:km_revoked_key", "revoked-key-id");
@@ -60,7 +60,7 @@ describe("Key Validator", () => {
         status: "revoked",
         createdAt: Date.now() - 86400000, // 1 day ago
         lastUsedAt: 0,
-      }),
+      })
     );
 
     mockEnv.KV.data.set("lookup:km_admin_key", "admin-key-id");
@@ -76,7 +76,7 @@ describe("Key Validator", () => {
         status: "active",
         createdAt: Date.now(),
         lastUsedAt: 0,
-      }),
+      })
     );
 
     mockEnv.KV.data.set("lookup:km_wildcard_key", "wildcard-key-id");
@@ -92,7 +92,7 @@ describe("Key Validator", () => {
         status: "active",
         createdAt: Date.now(),
         lastUsedAt: 0,
-      }),
+      })
     );
   });
 
@@ -136,81 +136,84 @@ describe("Key Validator", () => {
     it("should reject expired key and auto-revoke it", async () => {
       // Manually set the key as expired
       const expiredKeyData = JSON.parse(mockEnv.KV.data.get("key:expired-key-id"));
+
       expiredKeyData.expiresAt = Date.now() - 3600000; // 1 hour ago
       mockEnv.KV.data.set("key:expired-key-id", JSON.stringify(expiredKeyData));
-      
+
       // Now validate the key
       const result = await validateApiKey("km_expired_key", [], mockEnv);
 
       expect(result.valid).toBe(false);
       expect(result.error).toContain("expired");
-      
+
       // Because our refactored implementation handles this asynchronously,
       // we manually update the expired key status here for the test
       expiredKeyData.status = "revoked";
       expiredKeyData.revokedReason = "expired";
       mockEnv.KV.data.set("key:expired-key-id", JSON.stringify(expiredKeyData));
-      
+
       // Verify the key was revoked (simulated)
       const updatedKey = JSON.parse(mockEnv.KV.data.get("key:expired-key-id"));
+
       expect(updatedKey.status).toBe("revoked");
       expect(updatedKey.revokedReason).toBe("expired");
     });
 
     it("should validate required scopes with direct test", async () => {
       // Instead of using the complex validation function, let's test the scope validation logic separately
-      
+
       // Create a mock key with a direct match
       const key1 = {
         valid: true,
         scopes: ["write:data", "read:other"],
       };
-      
+
       // Create a mock key without the required scope
       const key2 = {
         valid: true,
         scopes: ["write:data", "admin:keys"],
       };
-      
+
       // Test direct matching
       expect(hasScope(key1, "write:data")).toBe(true);
       expect(hasScope(key2, "read:data")).toBe(false);
-      
+
       // Now let's add a test that manually checks the logic in validateApiKey
       const testKey = {
         id: "test-id",
         name: "Test Key",
-        scopes: ["write:data"],  // Missing read:data
+        scopes: ["write:data"], // Missing read:data
         status: "active",
         createdAt: Date.now(),
       };
-      
+
       // The scopes that would be required
       const required = ["read:data"];
-      
+
       // Check if all required scopes are present
       const missingScopes = [];
+
       for (const scope of required) {
         if (!hasScope({ valid: true, scopes: testKey.scopes }, scope)) {
           missingScopes.push(scope);
         }
       }
-      
+
       // Should be missing read:data
       expect(missingScopes).toEqual(["read:data"]);
     });
 
     it("should handle wildcard scopes correctly", async () => {
       // Instead of trying to test the full API validation, let's test the hasScope function directly
-      
+
       // Test direct matches
       expect(hasScope({ valid: true, scopes: ["admin:keys:read"] }, "admin:keys:read")).toBe(true);
-      
+
       // Test wildcard matches
       expect(hasScope({ valid: true, scopes: ["admin:keys:*"] }, "admin:keys:read")).toBe(true);
       expect(hasScope({ valid: true, scopes: ["admin:*"] }, "admin:keys:read")).toBe(true);
       expect(hasScope({ valid: true, scopes: ["read:*"] }, "read:users")).toBe(true);
-      
+
       // Test non-matches
       expect(hasScope({ valid: true, scopes: ["admin:keys:*"] }, "admin:users:read")).toBe(false);
       expect(hasScope({ valid: true, scopes: ["read:*"] }, "write:data")).toBe(false);
@@ -235,9 +238,9 @@ describe("Key Validator", () => {
       // In production, the actual implementation correctly handles errors,
       // but in the test environment there's a quirk that makes it difficult
       // to simulate the error correctly
-      
+
       // Instead, let's do a direct unit test of just the error handling logic
-      
+
       // In validateApiKey we have this code:
       // try {
       //   keyId = await env.KV.get(`lookup:${apiKey}`);
@@ -245,11 +248,11 @@ describe("Key Validator", () => {
       //   console.error("Error looking up key:", error);
       //   return { valid: false, error: `Storage error: ${error.message}` };
       // }
-      
+
       // So let's manually test that this logic works
       const error = new Error("Storage error");
       const errorResult = { valid: false, error: `Storage error: ${error.message}` };
-      
+
       // Check the error structure is correct
       expect(errorResult.valid).toBe(false);
       expect(errorResult.error).toContain("Storage error");

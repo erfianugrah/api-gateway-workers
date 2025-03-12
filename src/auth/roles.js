@@ -123,6 +123,7 @@ export function hasPermission(adminKey, requiredPermission) {
  */
 export function getRolePermissions(roleName) {
   const role = ADMIN_ROLES[roleName];
+
   if (!role) {
     return [];
   }

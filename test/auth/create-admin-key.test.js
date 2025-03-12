@@ -17,11 +17,11 @@ jest.mock("../../src/auth/keyGenerator.js", () => ({
     status: "active",
     createdBy: keyData.createdBy,
     metadata: keyData.metadata || {},
-  }))
+  })),
 }));
 
 jest.mock("../../src/auth/auditLogger.js", () => ({
-  logAdminAction: jest.fn().mockResolvedValue(undefined)
+  logAdminAction: jest.fn().mockResolvedValue(undefined),
 }));
 
 // Import the function to test and role definitions
@@ -60,16 +60,16 @@ describe("createAdminKey", () => {
     expect(result.name).toBe("Test Admin");
     expect(result.email).toBe("test@example.com");
     expect(result.role).toBe("KEY_ADMIN");
-    
+
     // Just check that it has scopes array, not the exact content
     // because our mock doesn't match the real implementation perfectly
     expect(Array.isArray(result.scopes)).toBe(true);
-    
+
     // Verify metadata
     expect(result.metadata).toBeDefined();
     expect(result.metadata.isAdmin).toBe(true);
   });
-  
+
   it("should accept custom scopes for CUSTOM role", async () => {
     const customData = {
       name: "Custom Admin",
@@ -87,7 +87,7 @@ describe("createAdminKey", () => {
     expect(result.role).toBe("CUSTOM");
     expect(result.scopes).toEqual(["admin:keys:read", "admin:users:read"]);
   });
-  
+
   it("should preserve createdBy and additional metadata", async () => {
     const adminData = {
       name: "Created Admin",
@@ -96,50 +96,50 @@ describe("createAdminKey", () => {
       createdBy: "creator-id",
       metadata: {
         department: "Engineering",
-        level: "Senior"
-      }
+        level: "Senior",
+      },
     };
-    
+
     const result = await createAdminKey(adminData, mockEnv);
-    
+
     expect(result.createdBy).toBe("creator-id");
     expect(result.metadata.department).toBe("Engineering");
     expect(result.metadata.level).toBe("Senior");
     expect(result.metadata.isAdmin).toBe(true); // Still has the isAdmin flag
   });
-  
+
   it("should throw error for invalid role", async () => {
     const invalidRoleData = {
       name: "Invalid Admin",
       email: "invalid@example.com",
-      role: "NONEXISTENT_ROLE"
+      role: "NONEXISTENT_ROLE",
     };
-    
+
     await expect(createAdminKey(invalidRoleData, mockEnv)).rejects.toThrow(
       "Invalid role"
     );
   });
-  
+
   it("should throw error for non-admin scopes", async () => {
     const invalidScopesData = {
       name: "Invalid Scopes Admin",
       email: "invalid-scopes@example.com",
       role: "CUSTOM",
-      scopes: ["read:data", "write:data"] // Not admin scopes
+      scopes: ["read:data", "write:data"], // Not admin scopes
     };
-    
+
     await expect(createAdminKey(invalidScopesData, mockEnv)).rejects.toThrow(
       "Invalid admin scopes"
     );
   });
-  
+
   it("should throw error if neither valid role nor custom scopes provided", async () => {
     const incompleteData = {
       name: "Incomplete Admin",
       email: "incomplete@example.com",
       // Missing both role and scopes
     };
-    
+
     await expect(createAdminKey(incompleteData, mockEnv)).rejects.toThrow(
       "Either a valid role or custom scopes must be provided"
     );

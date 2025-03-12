@@ -15,6 +15,7 @@ import { logAdminAction } from "./auditLogger.js";
  */
 export async function isSetupCompleted(env) {
   const setupStatus = await env.KV.get("system:setup_completed");
+
   return setupStatus === "true";
 }
 
@@ -28,10 +29,12 @@ export async function adminKeysExist(env) {
   try {
     // Check if any admin keys exist using the admin index
     const adminKeys = await env.KV.list({ prefix: "index:admin:" });
+
     return adminKeys && adminKeys.keys && adminKeys.keys.length > 0;
   } catch (error) {
     // Handle storage errors gracefully
     console.error("Error checking for admin keys:", error);
+
     return false;
   }
 }
@@ -120,6 +123,7 @@ export async function createAdminKey(adminData, env) {
 
     // Validate that all scopes start with 'admin:'
     const invalidScopes = scopes.filter((scope) => !scope.startsWith("admin:"));
+
     if (invalidScopes.length > 0) {
       throw new Error(`Invalid admin scopes: ${invalidScopes.join(", ")}`);
     }
@@ -167,7 +171,7 @@ export async function listAdminKeys(env) {
       }
 
       return JSON.parse(keyData);
-    }),
+    })
   );
 
   // Filter out any nulls (in case keys were deleted)

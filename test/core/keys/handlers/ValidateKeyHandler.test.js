@@ -1,8 +1,8 @@
-import { ValidateKeyHandler } from '../../../../src/core/keys/handlers/ValidateKeyHandler.js';
-import { ValidateKeyCommand } from '../../../../src/core/keys/commands/ValidateKeyCommand.js';
-import { jest, describe, it, expect, beforeEach } from '@jest/globals';
+import { ValidateKeyHandler } from "../../../../src/core/keys/handlers/ValidateKeyHandler.js";
+import { ValidateKeyCommand } from "../../../../src/core/keys/commands/ValidateKeyCommand.js";
+import { jest, describe, it, expect, beforeEach } from "@jest/globals";
 
-describe('ValidateKeyHandler', () => {
+describe("ValidateKeyHandler", () => {
   // Create mock KeyService
   const mockKeyService = {
     validateKey: jest.fn(),
@@ -16,27 +16,28 @@ describe('ValidateKeyHandler', () => {
     jest.clearAllMocks();
   });
 
-  describe('canHandle', () => {
-    it('should return true for ValidateKeyCommand', () => {
+  describe("canHandle", () => {
+    it("should return true for ValidateKeyCommand", () => {
       const command = new ValidateKeyCommand({
-        apiKey: 'km_test-key-0123456789',
-        requiredScopes: ['read:data'],
+        apiKey: "km_test-key-0123456789",
+        requiredScopes: ["read:data"],
       });
 
       expect(handler.canHandle(command)).toBe(true);
     });
 
-    it('should return false for other commands', () => {
-      const otherCommand = { type: 'OtherCommand' };
+    it("should return false for other commands", () => {
+      const otherCommand = { type: "OtherCommand" };
+
       expect(handler.canHandle(otherCommand)).toBe(false);
     });
   });
 
-  describe('handle', () => {
-    it('should call keyService.validateKey with correct parameters', async () => {
+  describe("handle", () => {
+    it("should call keyService.validateKey with correct parameters", async () => {
       // Setup test data
-      const apiKey = 'km_test-key-0123456789';
-      const requiredScopes = ['read:data'];
+      const apiKey = "km_test-key-0123456789";
+      const requiredScopes = ["read:data"];
       const command = new ValidateKeyCommand({
         apiKey,
         requiredScopes,
@@ -45,9 +46,10 @@ describe('ValidateKeyHandler', () => {
       // Mock validation result
       const validationResult = {
         valid: true,
-        keyId: 'test-key-id',
-        scopes: ['read:data', 'write:data'],
+        keyId: "test-key-id",
+        scopes: ["read:data", "write:data"],
       };
+
       mockKeyService.validateKey.mockResolvedValueOnce(validationResult);
 
       // Execute handler
@@ -60,9 +62,9 @@ describe('ValidateKeyHandler', () => {
       expect(result).toBe(validationResult);
     });
 
-    it('should pass empty array for requiredScopes if not provided', async () => {
+    it("should pass empty array for requiredScopes if not provided", async () => {
       // Setup test data with no scopes
-      const apiKey = 'km_test-key-0123456789';
+      const apiKey = "km_test-key-0123456789";
       const command = new ValidateKeyCommand({
         apiKey,
       });

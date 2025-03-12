@@ -6,21 +6,21 @@
  */
 export function createResponseMiddleware(options = {}) {
   const config = options.config;
-  
+
   // Default CORS settings from config if available
   const defaultCors = {
-    allowOrigin: config ? config.get('security.cors.allowOrigin', '*') : '*',
-    allowMethods: config ? config.get('security.cors.allowMethods', 'GET, POST, PUT, DELETE, OPTIONS') : 'GET, POST, PUT, DELETE, OPTIONS',
-    allowHeaders: config ? config.get('security.cors.allowHeaders', 'Content-Type, Authorization, X-API-Key') : 'Content-Type, Authorization, X-API-Key',
+    allowOrigin: config ? config.get("security.cors.allowOrigin", "*") : "*",
+    allowMethods: config ? config.get("security.cors.allowMethods", "GET, POST, PUT, DELETE, OPTIONS") : "GET, POST, PUT, DELETE, OPTIONS",
+    allowHeaders: config ? config.get("security.cors.allowHeaders", "Content-Type, Authorization, X-API-Key") : "Content-Type, Authorization, X-API-Key",
   };
-  
+
   // Default security settings from config if available
   const defaultSecurity = {
-    contentSecurityPolicy: config ? config.get('security.headers.contentSecurityPolicy', "default-src 'self'") : "default-src 'self'",
-    xFrameOptions: config ? config.get('security.headers.xFrameOptions', 'DENY') : 'DENY',
-    xContentTypeOptions: config ? config.get('security.headers.xContentTypeOptions', 'nosniff') : 'nosniff',
+    contentSecurityPolicy: config ? config.get("security.headers.contentSecurityPolicy", "default-src 'self'") : "default-src 'self'",
+    xFrameOptions: config ? config.get("security.headers.xFrameOptions", "DENY") : "DENY",
+    xContentTypeOptions: config ? config.get("security.headers.xContentTypeOptions", "nosniff") : "nosniff",
   };
-  
+
   const {
     cors = defaultCors,
     security = defaultSecurity,

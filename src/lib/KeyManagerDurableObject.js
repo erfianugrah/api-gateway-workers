@@ -60,7 +60,7 @@ export class KeyManagerDurableObject {
       "POST",
       "/maintenance/cleanup",
       auth("admin:system:maintenance"),
-      this.systemController.runCleanup,
+      this.systemController.runCleanup
     );
 
     // Key validation route (public)
@@ -71,7 +71,7 @@ export class KeyManagerDurableObject {
       "GET",
       "/keys",
       auth("admin:keys:read"),
-      this.keysController.listKeys,
+      this.keysController.listKeys
     );
 
     // API Versioning using config
@@ -79,14 +79,14 @@ export class KeyManagerDurableObject {
       "GET",
       "/keys",
       auth("admin:keys:read"),
-      this.keysController.listKeys,
+      this.keysController.listKeys
     );
 
     this.router.add(
       "POST",
       "/keys",
       auth("admin:keys:create"),
-      this.keysController.createKey,
+      this.keysController.createKey
     );
 
     // Enhanced Key ID validation using config patterns
@@ -96,7 +96,7 @@ export class KeyManagerDurableObject {
       "id",
       "id",
       auth("admin:keys:read"),
-      this.keysController.getKey,
+      this.keysController.getKey
     );
 
     // Delete key route with validated ID and versioning
@@ -106,14 +106,14 @@ export class KeyManagerDurableObject {
       "id",
       "id",
       auth("admin:keys:revoke"),
-      this.keysController.revokeKey,
+      this.keysController.revokeKey
     );
 
     this.router.add(
       "POST",
       "/keys/:id/rotate",
       auth("admin:keys:update"),
-      this.keysController.rotateKey,
+      this.keysController.rotateKey
     );
 
     // Add filtering by status with validated parameter
@@ -123,7 +123,7 @@ export class KeyManagerDurableObject {
       "status",
       "status",
       auth("admin:keys:read"),
-      this.keysController.listKeys,
+      this.keysController.listKeys
     );
 
     // Cursor-based pagination
@@ -131,7 +131,7 @@ export class KeyManagerDurableObject {
       "GET",
       "/keys-cursor",
       auth("admin:keys:read"),
-      this.keysController.listKeysWithCursor,
+      this.keysController.listKeysWithCursor
     );
 
     // Admin log routes
@@ -139,9 +139,9 @@ export class KeyManagerDurableObject {
       "GET",
       "/logs/admin",
       auth("admin:system:logs"),
-      this.systemController.getAdminLogs,
+      this.systemController.getAdminLogs
     );
-    
+
     // Log filtering by date with validated parameter
     this.router.addValidated(
       "GET",
@@ -149,7 +149,7 @@ export class KeyManagerDurableObject {
       "date",
       "date",
       auth("admin:system:logs"),
-      this.systemController.getAdminLogs,
+      this.systemController.getAdminLogs
     );
   }
 
@@ -162,7 +162,7 @@ export class KeyManagerDurableObject {
       // Calculate alarm time from config
       const cleanupIntervalHours = this.config.get(
         "maintenance.cleanupIntervalHours",
-        24,
+        24
       );
       const alarmTime = Date.now() + cleanupIntervalHours * 60 * 60 * 1000;
 
@@ -170,7 +170,7 @@ export class KeyManagerDurableObject {
       this.state.setAlarm(alarmTime);
     } else {
       console.log(
-        "Alarms not supported in this environment - scheduled maintenance disabled",
+        "Alarms not supported in this environment - scheduled maintenance disabled"
       );
     }
   }
@@ -182,14 +182,16 @@ export class KeyManagerDurableObject {
     try {
       // Clean up expired keys and rotations
       const cleanupResult = await this.keyService.cleanupExpiredKeys();
+
       console.log("Scheduled maintenance completed:", cleanupResult);
 
       // Schedule next alarm using config
       if (typeof this.state.setAlarm === "function") {
         const cleanupIntervalHours = this.config.get(
           "maintenance.cleanupIntervalHours",
-          24,
+          24
         );
+
         this.state.setAlarm(Date.now() + cleanupIntervalHours * 60 * 60 * 1000);
       }
     } catch (error) {
@@ -199,8 +201,9 @@ export class KeyManagerDurableObject {
       if (typeof this.state.setAlarm === "function") {
         const retryIntervalHours = this.config.get(
           "maintenance.retryIntervalHours",
-          1,
+          1
         );
+
         this.state.setAlarm(Date.now() + retryIntervalHours * 60 * 60 * 1000);
       }
     }
@@ -221,8 +224,8 @@ export class KeyManagerDurableObject {
         services: {
           proxyService: this.container.resolve("proxyService"),
           logger: this.container.resolve("logger"),
-          errorHandler: this.container.resolve("errorHandler")
-        }
+          errorHandler: this.container.resolve("errorHandler"),
+        },
       };
 
       // If rate limiting is available, apply it
@@ -248,6 +251,7 @@ export class KeyManagerDurableObject {
 
           // Otherwise just log the error and continue
           const logger = this.container.resolve("logger");
+
           logger.error("Rate limiting error", { error, path: new URL(request.url).pathname });
         }
       }

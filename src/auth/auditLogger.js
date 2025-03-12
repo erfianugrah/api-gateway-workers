@@ -20,6 +20,7 @@ export async function logAdminAction(adminId, action, details, env, request) {
   // Get client IP if request is provided
   let clientIp = "unknown";
   let userAgent = "unknown";
+
   if (request) {
     clientIp = getClientIp(request);
     userAgent = request.headers.get("User-Agent") || "unknown";
@@ -41,14 +42,16 @@ export async function logAdminAction(adminId, action, details, env, request) {
 
   // Store index by admin ID for quick lookups
   const timeKey = `${Date.now().toString().padStart(16, "0")}_${logId}`;
+
   await env.KV.put(`log:admin:by_admin:${adminId}:${timeKey}`, logId);
 
   // Store index by action type
   await env.KV.put(`log:admin:by_action:${action}:${timeKey}`, logId);
-  
+
   // Store index by date for date-based filtering
   const date = new Date();
-  const dateKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  const dateKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+
   await env.KV.put(`log:admin:by_date:${dateKey}:${timeKey}`, logId);
 
   // For critical actions, store in a separate list
@@ -71,7 +74,7 @@ export async function logAdminAction(adminId, action, details, env, request) {
  */
 export async function getAdminLogs(adminId, options = {}, env) {
   const limit = options.limit || 50;
-  let cursor = options.cursor || "";
+  const cursor = options.cursor || "";
 
   // List logs for the admin
   const logIndices = await env.KV.list({
@@ -104,7 +107,7 @@ export async function getAdminLogs(adminId, options = {}, env) {
       }
 
       return JSON.parse(logData);
-    }),
+    })
   );
 
   // Filter out any nulls
@@ -129,7 +132,7 @@ export async function getAdminLogs(adminId, options = {}, env) {
  */
 export async function getActionLogs(action, options = {}, env) {
   const limit = options.limit || 50;
-  let cursor = options.cursor || "";
+  const cursor = options.cursor || "";
 
   // List logs for the action
   const logIndices = await env.KV.list({
@@ -162,7 +165,7 @@ export async function getActionLogs(action, options = {}, env) {
       }
 
       return JSON.parse(logData);
-    }),
+    })
   );
 
   // Filter out any nulls
@@ -177,7 +180,7 @@ export async function getActionLogs(action, options = {}, env) {
 
 /**
  * Get logs for a specific date
- * 
+ *
  * @param {string} date - Date in YYYY-MM-DD format
  * @param {Object} options - Options for fetching logs
  * @param {number} options.limit - Maximum number of logs to return
@@ -189,8 +192,8 @@ export async function getActionLogs(action, options = {}, env) {
  */
 export async function getLogsByDate(date, options = {}, env) {
   const limit = options.limit || 50;
-  let cursor = options.cursor || "";
-  
+  const cursor = options.cursor || "";
+
   // Validate date format
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
     throw new Error("Invalid date format. Use YYYY-MM-DD");
@@ -227,17 +230,17 @@ export async function getLogsByDate(date, options = {}, env) {
       }
 
       return JSON.parse(logData);
-    }),
+    })
   );
 
   // Filter out any nulls
   let validLogs = logs.filter((log) => log !== null);
-  
+
   // Apply additional filters if provided
   if (options.adminId) {
     validLogs = validLogs.filter(log => log.adminId === options.adminId);
   }
-  
+
   if (options.action) {
     validLogs = validLogs.filter(log => log.action === options.action);
   }
@@ -260,7 +263,7 @@ export async function getLogsByDate(date, options = {}, env) {
  */
 export async function getCriticalLogs(options = {}, env) {
   const limit = options.limit || 50;
-  let cursor = options.cursor || "";
+  const cursor = options.cursor || "";
 
   // List critical logs
   const logIndices = await env.KV.list({
@@ -293,7 +296,7 @@ export async function getCriticalLogs(options = {}, env) {
       }
 
       return JSON.parse(logData);
-    }),
+    })
   );
 
   // Filter out any nulls
@@ -336,12 +339,14 @@ function isCriticalAction(action) {
 function getClientIp(request) {
   // Try to get IP from Cloudflare headers
   const cfIp = request.headers.get("CF-Connecting-IP");
+
   if (cfIp) {
     return cfIp;
   }
 
   // Fall back to X-Forwarded-For
   const forwardedFor = request.headers.get("X-Forwarded-For");
+
   if (forwardedFor) {
     // Extract first IP from list
     return forwardedFor.split(",")[0].trim();

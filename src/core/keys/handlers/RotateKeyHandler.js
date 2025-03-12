@@ -45,7 +45,7 @@ export class RotateKeyHandler extends CommandHandler {
         name: command.name,
         expiresAt: command.expiresAt,
         rotatedBy: command.rotatedBy,
-      },
+      }
     );
 
     // If rotation failed, handle the error
@@ -53,6 +53,7 @@ export class RotateKeyHandler extends CommandHandler {
       if (result.error.includes("not found")) {
         throw new NotFoundError("API key", command.keyId);
       }
+
       throw new Error(result.error);
     }
 
@@ -67,7 +68,7 @@ export class RotateKeyHandler extends CommandHandler {
           gracePeriodDays: command.gracePeriodDays,
         },
         context.env,
-        context.request,
+        context.request
       );
     }
 

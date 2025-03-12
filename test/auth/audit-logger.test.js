@@ -6,7 +6,7 @@ const logAdminAction = jest.fn(async (adminId, action, details, env, request) =>
   const timestamp = Date.now();
   const ip = request?.headers?.get("CF-Connecting-IP") || "unknown";
   const userAgent = request?.headers?.get("User-Agent") || "unknown";
-  
+
   const logEntry = {
     id,
     adminId,
@@ -14,23 +14,25 @@ const logAdminAction = jest.fn(async (adminId, action, details, env, request) =>
     details,
     timestamp,
     ip,
-    userAgent
+    userAgent,
   };
-  
+
   // Store the log entry
   env.KV.put(`log:admin:${id}`, JSON.stringify(logEntry));
-  
+
   // Create index entries
   const timeKey = `${timestamp.toString().padStart(16, "0")}_${id}`;
+
   env.KV.put(`log:admin:by_admin:${adminId}:${timeKey}`, id);
   env.KV.put(`log:admin:by_action:${action}:${timeKey}`, id);
-  
+
   // Add to critical logs if needed
   const criticalActions = ["system_config_change", "create_admin", "revoke_admin"];
+
   if (criticalActions.includes(action)) {
     env.KV.put(`log:admin:critical:${timeKey}`, id);
   }
-  
+
   return id;
 });
 
@@ -40,18 +42,18 @@ jest.mock("../../src/auth/auditLogger.js", () => ({
   getAdminLogs: jest.fn().mockResolvedValue({
     logs: [{ id: "log-1", adminId: "admin-1" }],
     cursor: null,
-    hasMore: false
+    hasMore: false,
   }),
   getActionLogs: jest.fn().mockResolvedValue({
     logs: [{ id: "log-2", action: "create_key" }],
     cursor: null,
-    hasMore: false
+    hasMore: false,
   }),
   getCriticalLogs: jest.fn().mockResolvedValue({
     logs: [{ id: "log-3", action: "system_config_change" }],
     cursor: null,
-    hasMore: false
-  })
+    hasMore: false,
+  }),
 }));
 
 describe("Audit Logger", () => {
@@ -61,7 +63,7 @@ describe("Audit Logger", () => {
   beforeEach(() => {
     // Reset mocks
     logAdminAction.mockClear();
-    
+
     // Create a KV storage mock
     const kvStorage = {
       data: new Map(),
@@ -69,6 +71,7 @@ describe("Audit Logger", () => {
       put: jest.fn(async (key, value) => kvStorage.data.set(key, value)),
       list: jest.fn(async ({ prefix, cursor, limit }) => {
         const keys = [];
+
         for (const [key, value] of kvStorage.data.entries()) {
           if (key.startsWith(prefix)) {
             keys.push({ name: key, value });
@@ -78,7 +81,7 @@ describe("Audit Logger", () => {
         const cursorValue = cursor || "";
         const filteredKeys = keys.filter((k) => k.name > cursorValue).slice(
           0,
-          limit || 50,
+          limit || 50
         );
 
         // Return null for cursor only when there are no more results
@@ -104,6 +107,7 @@ describe("Audit Logger", () => {
         get: function (header) {
           if (header === "CF-Connecting-IP") return "192.168.1.1";
           if (header === "User-Agent") return "Test User Agent";
+
           return null;
         },
       },
@@ -127,7 +131,7 @@ describe("Audit Logger", () => {
         action,
         details,
         mockEnv,
-        mockRequest,
+        mockRequest
       );
 
       // Should return the log ID
@@ -136,20 +140,21 @@ describe("Audit Logger", () => {
       // Should store the log entry
       expect(mockEnv.KV.put).toHaveBeenCalledWith(
         "log:admin:test-log-id",
-        expect.any(String),
+        expect.any(String)
       );
 
       // Should have created admin index
       const timeKey = `${Date.now().toString().padStart(16, "0")}_test-log-id`;
+
       expect(mockEnv.KV.put).toHaveBeenCalledWith(
         `log:admin:by_admin:test-admin-id:${timeKey}`,
-        "test-log-id",
+        "test-log-id"
       );
 
       // Should have created action index
       expect(mockEnv.KV.put).toHaveBeenCalledWith(
         `log:admin:by_action:create_key:${timeKey}`,
-        "test-log-id",
+        "test-log-id"
       );
     });
 
@@ -163,9 +168,10 @@ describe("Audit Logger", () => {
 
       // Should add to critical logs index
       const timeKey = `${Date.now().toString().padStart(16, "0")}_test-log-id`;
+
       expect(mockEnv.KV.put).toHaveBeenCalledWith(
         `log:admin:critical:${timeKey}`,
-        "test-log-id",
+        "test-log-id"
       );
 
       // Reset mocks
@@ -174,12 +180,13 @@ describe("Audit Logger", () => {
 
       // Test with a non-critical action
       const nonCriticalAction = "view_key";
+
       await logAdminAction(adminId, nonCriticalAction, {}, mockEnv);
 
       // Should not add to critical logs
       expect(mockEnv.KV.put).not.toHaveBeenCalledWith(
         expect.stringMatching(/^log:admin:critical:/),
-        expect.anything(),
+        expect.anything()
       );
     });
   });

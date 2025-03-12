@@ -38,10 +38,11 @@ export class CommandBus {
   async execute(command, context = {}) {
     // Validate the command
     const validation = command.validate();
+
     if (!validation.isValid) {
       throw new ValidationError(
         `Invalid ${command.getName()}`,
-        validation.errors,
+        validation.errors
       );
     }
 
@@ -65,6 +66,7 @@ export class CommandBus {
   findHandler(command) {
     // First try to find by explicit naming convention
     const handlerName = `${command.getName()}Handler`;
+
     if (this.handlers.has(handlerName)) {
       return this.handlers.get(handlerName);
     }

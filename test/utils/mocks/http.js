@@ -1,8 +1,8 @@
 /**
  * Mock HTTP-related objects for testing
  */
-import { createTestAdmin } from '../factories.js';
-import { jest } from '@jest/globals';
+import { createTestAdmin } from "../factories.js";
+import { jest } from "@jest/globals";
 
 /**
  * Create a mock request
@@ -38,6 +38,7 @@ export function createMockRequest(options = {}) {
       set: (name, value) => headerMap.set(name, value),
       append: (name, value) => {
         const current = headerMap.get(name);
+
         if (current) {
           headerMap.set(name, `${current}, ${value}`);
         } else {
@@ -54,7 +55,7 @@ export function createMockRequest(options = {}) {
   if (body) {
     request.json = jest.fn().mockResolvedValue(body);
     request.text = jest.fn().mockResolvedValue(
-      typeof body === 'string' ? body : JSON.stringify(body)
+      typeof body === "string" ? body : JSON.stringify(body)
     );
   }
 
@@ -71,28 +72,30 @@ export function createMockRequest(options = {}) {
  */
 export function createMockResponse() {
   return jest.fn().mockImplementation((body, options = {}) => {
-    const { status = 200, statusText = '', headers = {} } = options;
-    
+    const { status = 200, statusText = "", headers = {} } = options;
+
     const response = {
       body,
       status,
       statusText,
       headers: new Map(Object.entries(headers)),
       json: jest.fn().mockImplementation(() => {
-        if (typeof body === 'string') {
+        if (typeof body === "string") {
           return Promise.resolve(JSON.parse(body));
         }
+
         return Promise.resolve(body);
       }),
       text: jest.fn().mockImplementation(() => {
-        if (typeof body === 'string') {
+        if (typeof body === "string") {
           return Promise.resolve(body);
         }
+
         return Promise.resolve(JSON.stringify(body));
       }),
       clone: jest.fn().mockReturnValue(response),
     };
-    
+
     return response;
   });
 }

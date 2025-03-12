@@ -11,12 +11,12 @@ jest.mock("../../src/auth/keyGenerator.js", () => ({
     email: "test@example.com",
     role: "SUPER_ADMIN",
     status: "active",
-    metadata: { isFirstAdmin: true }
-  })
+    metadata: { isFirstAdmin: true },
+  }),
 }));
 
 jest.mock("../../src/auth/auditLogger.js", () => ({
-  logAdminAction: jest.fn().mockResolvedValue(undefined)
+  logAdminAction: jest.fn().mockResolvedValue(undefined),
 }));
 
 // Import the function to test
@@ -28,19 +28,19 @@ describe("setupFirstAdmin", () => {
     const mockEnv = {
       KV: {
         get: jest.fn().mockResolvedValue(null), // Setup not completed
-        put: jest.fn().mockResolvedValue(undefined)
-      }
+        put: jest.fn().mockResolvedValue(undefined),
+      },
     };
-    
+
     // Test data
     const adminData = {
       name: "First Admin",
-      email: "admin@example.com"
+      email: "admin@example.com",
     };
-    
+
     // Call the function
     const result = await setupFirstAdmin(adminData, mockEnv);
-    
+
     // Verify result
     expect(result).toBeDefined();
     expect(mockEnv.KV.put).toHaveBeenCalledWith(
@@ -48,27 +48,27 @@ describe("setupFirstAdmin", () => {
       "true"
     );
   });
-  
+
   it("should throw error if setup already completed", async () => {
     // Mock environment with setup already completed
     const mockEnv = {
       KV: {
         get: jest.fn().mockResolvedValue("true"), // Setup already completed
-        put: jest.fn()
-      }
+        put: jest.fn(),
+      },
     };
-    
+
     // Test data
     const adminData = {
       name: "Another Admin",
-      email: "another@example.com"
+      email: "another@example.com",
     };
-    
+
     // Expect error
     await expect(setupFirstAdmin(adminData, mockEnv)).rejects.toThrow(
       "Setup has already been completed"
     );
-    
+
     // Verify KV.put was not called
     expect(mockEnv.KV.put).not.toHaveBeenCalled();
   });

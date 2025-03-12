@@ -1,6 +1,5 @@
 import { Command } from "../../command/Command.js";
-import { isValidUuid } from "../../../utils/validation.js";
-import { validateKeyRotationParams } from "../../../utils/validation.js";
+import { isValidUuid, validateKeyRotationParams } from "../../../utils/validation.js";
 
 /**
  * Command to rotate an API key

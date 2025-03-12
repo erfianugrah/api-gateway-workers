@@ -1,7 +1,7 @@
 /**
  * Mock storage implementations for testing
  */
-import { jest } from '@jest/globals';
+import { jest } from "@jest/globals";
 
 /**
  * Create a mock storage implementation
@@ -29,7 +29,7 @@ export function createMockStorage() {
  */
 export function createMockDurableObjectState() {
   const storage = createMockStorage();
-  
+
   return {
     storage,
     blockConcurrencyWhile: jest.fn((callback) => callback()),

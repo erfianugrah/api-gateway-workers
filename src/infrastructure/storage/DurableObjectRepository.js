@@ -145,7 +145,9 @@ export class DurableObjectRepository extends KeyRepository {
     const items = keyArray.map(([_, value]) => {
       // Create a safe copy without sensitive data
       const safeKey = { ...value };
+
       delete safeKey.encryptedKey; // Remove sensitive data
+
       return safeKey;
     });
 
@@ -167,13 +169,14 @@ export class DurableObjectRepository extends KeyRepository {
    * @returns {Promise<Object>} Paginated key list with cursor
    */
   async listKeysWithCursor(
-    { limit = 100, cursor = null, includeRotated = false } = {},
+    { limit = 100, cursor = null, includeRotated = false } = {}
   ) {
     let startAfter = null;
 
     // Decode cursor if provided
     if (cursor) {
       const cursorData = decodeCursor(cursor);
+
       if (cursorData && cursorData.id && cursorData.ts) {
         startAfter = getKeyIndexEntry(cursorData.id, cursorData.ts);
       }
@@ -207,7 +210,9 @@ export class DurableObjectRepository extends KeyRepository {
 
       // Create a safe copy without sensitive data
       const safeKey = { ...apiKey };
+
       delete safeKey.encryptedKey; // Remove sensitive data
+
       return safeKey;
     });
 
@@ -216,11 +221,13 @@ export class DurableObjectRepository extends KeyRepository {
 
     // Generate next cursor if we have more results
     let nextCursor = null;
+
     if (hasMore && entryArray.length > 0) {
       const lastEntry = entryArray[entryArray.length - 1];
       const lastKeyId = lastEntry[1];
       const lastKey = await this.getKey(lastKeyId);
       const lastTimestamp = lastKey ? lastKey.createdAt : Date.now();
+
       nextCursor = encodeCursor(lastKeyId, lastTimestamp);
     }
 

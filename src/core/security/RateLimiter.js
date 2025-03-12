@@ -40,6 +40,7 @@ export class RateLimiter {
 
     if (endpoint) {
       const endpointConfig = this.config.endpoints[endpoint];
+
       limit = endpointConfig.limit || limit;
       windowMs = endpointConfig.window || windowMs;
     }
@@ -52,7 +53,7 @@ export class RateLimiter {
       this.storage,
       rateLimitKey,
       limit,
-      windowMs,
+      windowMs
     );
 
     // If limited, throw error
